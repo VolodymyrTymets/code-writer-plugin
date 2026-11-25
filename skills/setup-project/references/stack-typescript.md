@@ -2,7 +2,7 @@
 
 Step 4.5 of `/setup` for a repo whose `Stacks:` line contains `typescript`. Same bootstrap PR, no second command.
 
-**Status:** the rule files below are written in T3. Until `rules/stack-typescript/` exists in the plugin, install nothing for this stack, keep `typescript` in the `Stacks:` line, and say in the PR that the TypeScript rules are not shipped yet. Never write them by hand into the repo from memory.
+**Status:** the rule files below are written in T3. Until `rules/stack-typescript/` exists in the plugin, skip steps 2 to 4 for this stack (still detect, fill the core placeholders and the command map, and add the settings entries), keep `typescript` in the `Stacks:` line, and say in the PR that the TypeScript rules are not shipped yet. Never write them by hand into the repo from memory.
 
 ## Step 1 — Detect, then confirm in one line
 
@@ -21,7 +21,7 @@ Copy the files of the manifest below from `rules/stack-typescript/` into `.claud
 
 ## Step 3 — Append the stack section and fill the placeholders
 
-Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map. Rule IDs must not collide with another stack's section in a repo with two stacks (T3 decides the prefixes).
+Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Rule IDs must not collide with another stack's section in a repo with two stacks (T3 decides the prefixes).
 
 | Placeholder | Typical value |
 |-------------|---------------|

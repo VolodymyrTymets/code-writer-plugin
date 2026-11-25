@@ -88,8 +88,10 @@ a developer's turn and a missed block means the rule quietly stopped existing.
 `/setup` re-run reads it, and the stack hooks will read it too, so the format is a contract:
 
 - Shape: `Stacks: python, typescript`, matched by `^Stacks:\s*(.+)$`. Plain text: no bold, no backticks.
-- Values: the names of `rules/stack-<name>/` directories, lowercase, comma separated. `Stacks: none` means the repo's
-  stack has no layer yet (the PR names the missing rules).
+- Values: the names of the stacks `/setup` knows, lowercase, comma separated. A stack is known when
+  `skills/setup-project/references/stack-<name>.md` exists with an `## Export manifest`. Its rule files may land later:
+  `typescript` is recorded before `rules/stack-typescript/` exists and installs nothing until then. `Stacks: none` means no
+  stack known to `/setup` (the PR names the missing rules).
 - Repos set up before this line existed have a stack section but no line. `/setup` infers the stack from the section,
   asks for confirmation, inserts the line and does not append the section again.
 - Rollback: delete the line. `/setup` falls back to detect-then-confirm.

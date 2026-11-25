@@ -21,14 +21,14 @@ From this, fill as much of the command map as you can **without asking**: instal
 
 ## Step 1.5 — Which stack? (before anything is copied)
 
-Ask this before the interview and before any file is written. Greenfield or brownfield, the question is the same.
+Ask this before the interview and before any file is copied or written. Greenfield or brownfield, the question is the same.
 
-1. **Read an existing answer.** If `CLAUDE.md` has a `Stacks:` line, that is the answer: confirm it in one line and move on. If it has **no `Stacks:` line** but already holds a stack section from an earlier `/setup`, infer the stack from that section (a Python section means `python`), ask the human to confirm, insert the line, and never append the section again.
+1. **Read an existing answer.** If `CLAUDE.md` has a `Stacks:` line, that is the answer: confirm it in one line and move on. If it has **no `Stacks:` line** but already holds a stack section from an earlier `/setup`, infer the stack from the evidence (an S1 bullet citing `.claude/rules/python-tooling.md`, or that file present in `.claude/rules/`), ask the human to confirm, insert the line directly above `Dependency manager:` in step 4, and never append the section again.
 2. **Detect.** Look at the repo root and two levels down (`apps/*`, `packages/*`), skipping `node_modules`, `.venv` and `venv`. `pyproject.toml` or `requirements*.txt` suggests Python. `package.json` or `tsconfig.json` suggests TypeScript. Both together suggests Both. Nothing found (an empty greenfield repo) means no suggestion.
 3. **Ask** with `AskUserQuestion`: TypeScript, Python or Both, with the detected option first. The user's answer wins over detection. Any other stack (Go, Rust...) is answered through "Other" and recorded as `Stacks: none`; the PR then names which stack rules the repo will need and who writes them.
-4. **Record** the answer as `{{STACKS}}` in the `Stacks:` line of `CLAUDE.md` (format: see CONTRIBUTING.md). Step 4.5, the interview and every later re-run read this line and nothing else.
+4. **Hold the answer**; step 4.1 writes it as `{{STACKS}}` into the `Stacks:` line of `CLAUDE.md` (format: see CONTRIBUTING.md). Once it exists, step 4.5, the interview and every later re-run read this line and nothing else. Do not create a stub `CLAUDE.md` early.
 
-Re-run with a changed answer: install the stack that is missing, list the files of a stack that was dropped, and delete nothing.
+Re-run with a changed answer (or the same one): install only the stacks that are in the line but not yet installed, and skip a stack that is already installed (its section is in `CLAUDE.md` and its files are in `.claude/rules/`). For a stack that was dropped, list its files and delete nothing.
 
 ## Step 2 — Greenfield: the interview
 
@@ -69,21 +69,11 @@ Any placeholder left unfilled is a bug: the agent will read it literally. `grep 
 
 ## Step 4.5 — The stack layers
 
-For each stack in the `Stacks:` line, follow its reference: @references/stack-python.md or @references/stack-typescript.md. Each reference ends with an `## Export manifest`; copy exactly those files, each one once, and no file of a stack that was not chosen. `Stacks: none` skips this step.
+For each stack in the `Stacks:` line, follow its reference: @references/stack-python.md or @references/stack-typescript.md. Each reference ends with an `## Export manifest`; copy exactly those files, each one once per repo (an already-installed stack is skipped, see step 1.5), and no file of a stack that was not chosen. `Stacks: none` skips this step.
 
-In a repo with two stacks, `protected-paths.md` and `destructive-commands.txt` are shared files. Each stack appends its own block once, under a comment naming the stack, until they are split per stack.
+In a repo with two stacks, `{{DEPENDENCY_MANAGER}}`, `{{RUNTIME_VERSION*}}` and `{{CMD_INSTALL}}` hold one entry per stack, labelled (`uv (python), pnpm (typescript)`; one install row per stack), so T3 allows each stack's own manager and not a second one for the same stack. `protected-paths.md` and `destructive-commands.txt` are shared files. Each stack appends its own block once, under a comment naming the stack, until they are split per stack.
 
-Python, in short:
-
-```bash
-ls uv.lock poetry.lock Pipfile requirements*.txt pyproject.toml .python-version ruff.toml 2>/dev/null
-ls -d .venv venv 2>/dev/null
-```
-
-Install `python-tooling.md`, `python-core.md` and `testing-python.md` from `rules/stack-python/` into `.claude/rules/`,
-merging with any Python rules the repo already has instead of overwriting them. Then append the filled
-`rules/stack-python/CLAUDE.stack-section.md` to `CLAUDE.md` and extend `protected-paths.md` and
-`destructive-commands.txt` from `templates/stack-python/`.
+Python: detect the tooling as in @references/stack-python.md, install the manifest's rule files (merged with any the repo already has, never overwritten), append the filled stack section, and extend `protected-paths.md` and `destructive-commands.txt` from its templates.
 
 ## Step 5 — Seed the knowledge layer
 

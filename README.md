@@ -26,7 +26,7 @@ claude plugin install code-writer@code-writer
 `marketplace add` fails with "SSH authentication failed" or "Repository not found"? See
 [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-Then, inside the Python repository:
+Then, inside the repository:
 
 ```
 /setup                  # once per repo: asks the stack (TypeScript, Python or Both), then interview or brownfield discovery
