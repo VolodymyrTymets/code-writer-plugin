@@ -258,6 +258,27 @@ def test_every_placeholder_in_the_rules_library_is_documented_in_setup():
             for ph in sorted(placeholders) if ph not in text])
 
 
+STACKS_LINE = re.compile(r'^Stacks:\s*(.+)$', re.M)   # the contract in CONTRIBUTING.md; hooks and /setup re-runs read it
+
+
+def test_stacks_line_in_the_template_matches_the_contract():
+    # the line is plain text: bold or backticks would end up inside the captured value
+    template = read(ROOT / 'rules' / 'core' / 'CLAUDE.template.md')
+    lines = [l for l in template.split('\n') if l.startswith('Stacks:')]
+    fails = []
+    if lines != ['Stacks: {{STACKS}}']:
+        fails.append(f'rules/core/CLAUDE.template.md must hold exactly one line "Stacks: {{{{STACKS}}}}", found {lines}')
+    known = {d.name[len('stack-'):] for d in (ROOT / 'rules').iterdir() if d.name.startswith('stack-')}
+    for sample in ('Stacks: python', 'Stacks: none'):   # not typescript: it must pass before its rules exist
+        values = [v.strip() for v in STACKS_LINE.search(sample).group(1).split(',')]
+        for v in values:
+            if v != 'none' and v not in known:
+                fails.append(f'"{sample}": {v} is not a rules/stack-<name>/ directory')
+    if 'Stacks:' not in read(ROOT / 'CONTRIBUTING.md'):
+        fails.append('CONTRIBUTING.md does not document the Stacks: contract')
+    report(fails)
+
+
 # ---------------- hooks wiring ----------------
 
 def test_hooks_json_is_wired_to_scripts_that_exist():

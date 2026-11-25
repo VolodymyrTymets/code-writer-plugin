@@ -18,6 +18,7 @@ to `.claude/rules/`, `docs/`, or a skill and leave a pointer.
 
 `lint` is the static check: when the map holds a real command it is a B1 gate. `none` means the repo has no such task (never invent one). A repo that runs a type checker or a formatter check may add a `typecheck` or `format` row: each is then a gate too.
 
+Stacks: {{STACKS}}
 Dependency manager: **{{DEPENDENCY_MANAGER}}**. Runtime pinned by **{{RUNTIME_VERSION_FILE}}**: **{{RUNTIME_VERSION}}**.
 
 - **T1** Run tasks through the commands above. Never invent a script name, never `cd` and guess.

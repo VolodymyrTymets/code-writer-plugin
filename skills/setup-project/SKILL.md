@@ -49,6 +49,7 @@ Follow @references/brownfield-discovery.md. The principle: **the constitution is
 | `{{PROJECT_NAME}}` | the repo / product name |
 | `{{PROTECTED_BRANCHES}}` | the repo's real protected branches (ask, then verify against branch protection) |
 | `{{CMD_INSTALL}}`, `{{CMD_LINT}}`, `{{CMD_TEST}}`, `{{CMD_TEST_AFFECTED}}`, `{{CMD_BUILD}}`, `{{CMD_DEV}}`, `{{CMD_E2E}}` | the declared task scripts, **each one actually run once** to confirm it works. Use `none` where the repo genuinely has no such task — never invent a command |
+| `{{STACKS}}` | the stack answer from step 1.5, written as `python`, `typescript`, `python, typescript` or `none`. Plain text, no bold, no backticks |
 | `{{DEPENDENCY_MANAGER}}` | the manifest's declared manager |
 | `{{RUNTIME_VERSION_FILE}}`, `{{RUNTIME_VERSION}}` | the version pin file the repo uses, and the version in it |
 | `{{I18N_NOTE}}` | `""` if the repo has no i18n, otherwise one clause naming the key convention |
