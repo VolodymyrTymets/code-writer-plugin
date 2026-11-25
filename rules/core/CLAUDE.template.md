@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}} — project constitution
 
-Managed by the `rln-agent` plugin. Hard rules only; depth lives in the pointers at the bottom.
+Managed by the `code-writer` plugin. Hard rules only; depth lives in the pointers at the bottom.
 Placeholders are filled by `/setup`. Keep this file under 200 lines — if a rule needs depth, move it
 to `.claude/rules/`, `docs/`, or a skill and leave a pointer.
 

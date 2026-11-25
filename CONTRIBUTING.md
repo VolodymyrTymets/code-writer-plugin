@@ -1,4 +1,4 @@
-# Contributing to rln-agent
+# Contributing to code-writer
 
 How the plugin is built, why it is shaped this way, and what a change needs before it merges. For using the
 plugin on a repository, see [README.md](README.md). This file is the only design document.

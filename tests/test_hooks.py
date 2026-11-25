@@ -54,7 +54,7 @@ def _init_repo(path):
 @pytest.fixture(scope='module', autouse=True)
 def _fixtures(tmp_path_factory):
     global REPO, PLAN_REPO, PIP_REPO, UV_REPO
-    REPO = tmp_path_factory.mktemp('rln-hooks')
+    REPO = tmp_path_factory.mktemp('code-writer-hooks')
     (REPO / '.claude' / 'rules').mkdir(parents=True)
     (REPO / 'src' / 'orders').mkdir(parents=True)
     (REPO / 'CLAUDE.md').write_text(CLAUDE_MD)
@@ -63,19 +63,19 @@ def _fixtures(tmp_path_factory):
         '# repo-specific irreversible commands\n^\\s*make\\s+db-wipe\\b\n')
     _init_repo(REPO)
 
-    PLAN_REPO = tmp_path_factory.mktemp('rln-hooks-plan')
+    PLAN_REPO = tmp_path_factory.mktemp('code-writer-hooks-plan')
     (PLAN_REPO / 'src').mkdir()
     (PLAN_REPO / 'docs' / 'features' / 'APK-142').mkdir(parents=True)
     (PLAN_REPO / 'docs' / 'features' / 'APK-142' / 'plan.md').write_text('# APK-142 - plan\n\n### R1 do the thing\n')
     _init_repo(PLAN_REPO)
     _git(PLAN_REPO, 'switch', '-q', '-c', 'feat/APK-142-orders')
 
-    PIP_REPO = tmp_path_factory.mktemp('rln-hooks-pip')
+    PIP_REPO = tmp_path_factory.mktemp('code-writer-hooks-pip')
     (PIP_REPO / 'src').mkdir()
     (PIP_REPO / 'requirements.txt').write_text('requests==2.32.0\n')
     (PIP_REPO / 'ruff.toml').write_text('target-version = "py39"\n\n[lint]\nselect = ["E4", "F"]\n')
 
-    UV_REPO = tmp_path_factory.mktemp('rln-hooks-uv')
+    UV_REPO = tmp_path_factory.mktemp('code-writer-hooks-uv')
     (UV_REPO / 'pyproject.toml').write_text(
         '[project]\nname = "t"\n\n[tool.uv]\n\n[tool.ruff.format]\nquote-style = "double"\n')
     (UV_REPO / 'uv.lock').write_text('')
@@ -173,6 +173,13 @@ def test_guard_git_blocks_a_commit_on_a_protected_branch():
 def test_guard_git_allows_a_commit_on_a_feature_branch():
     branch('feat/APK-1-x')
     assert run('guard-git.py', bash('git commit -m "feat(x): APK-1"')).code == 0
+
+
+def test_protected_branches_come_from_code_writer_env_only():
+    branch('main')
+    commit = bash('git commit -m x')
+    assert run_in(REPO, 'guard-git.py', commit, env={'CODE_WRITER_PROTECTED_BRANCHES': 'trunk'}).code == 0
+    assert run_in(REPO, 'guard-git.py', commit, env={'CODE_WRITER_PROTECTED_BRANCHES': 'main'}).code == 2
 
 
 def test_guard_git_blocks_plain_force_but_allows_force_with_lease():

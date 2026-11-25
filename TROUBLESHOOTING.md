@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Problems seen when installing or running `rln-agent`, with the fix for each. Back to the
+Problems seen when installing or running `code-writer`, with the fix for each. Back to the
 [README](README.md).
 
 ## `marketplace add` fails with "SSH authentication failed" or "Repository not found"
@@ -8,12 +8,12 @@ Problems seen when installing or running `rln-agent`, with the fix for each. Bac
 ### Symptom
 
 ```
-$ claude plugin marketplace add VolodymyrTymets/rln-agent
+$ claude plugin marketplace add VolodymyrTymets/code-writer-plugin
 Adding marketplace…
 ✘ Failed to add marketplace: Failed to clone marketplace repository: SSH authentication failed. Please ensure
 your SSH keys are configured for GitHub, or use an HTTPS URL instead.
 
-Original error: Cloning into '/Users/<you>/.claude/plugins/marketplaces/VolodymyrTymets-rln-agent'...
+Original error: Cloning into '/Users/<you>/.claude/plugins/marketplaces/VolodymyrTymets-code-writer-plugin'...
 ERROR: Repository not found.
 fatal: Could not read from remote repository.
 ```
@@ -66,20 +66,20 @@ found" rather than "access denied".
 3. Check that plain git can now reach the repo with the transport you kept:
 
    ```bash
-   git ls-remote git@github.com:VolodymyrTymets/rln-agent.git       # SSH
-   git ls-remote https://github.com/VolodymyrTymets/rln-agent.git   # HTTPS
+   git ls-remote git@github.com:VolodymyrTymets/code-writer-plugin.git       # SSH
+   git ls-remote https://github.com/VolodymyrTymets/code-writer-plugin.git   # HTTPS
    ```
 
    If this still says "Repository not found", the problem is access, not config: make sure your GitHub
-   account is the owner of, or a collaborator on, `VolodymyrTymets/rln-agent` and, for SSH, that `ssh -T git@github.com` greets you
+   account is the owner of, or a collaborator on, `VolodymyrTymets/code-writer-plugin` and, for SSH, that `ssh -T git@github.com` greets you
    by the right username.
 
 4. Add the marketplace again:
 
    ```bash
-   claude plugin marketplace add VolodymyrTymets/rln-agent
-   claude plugin install rln-agent@rln
+   claude plugin marketplace add VolodymyrTymets/code-writer-plugin
+   claude plugin install code-writer@code-writer
    ```
 
    To force one transport regardless of git config, pass the full URL instead of the `owner/repo`
-   shorthand, e.g. `claude plugin marketplace add https://github.com/VolodymyrTymets/rln-agent.git`.
+   shorthand, e.g. `claude plugin marketplace add https://github.com/VolodymyrTymets/code-writer-plugin.git`.

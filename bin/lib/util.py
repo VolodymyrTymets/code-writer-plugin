@@ -1,4 +1,4 @@
-"""Shared helpers for rln-agent hooks. Needs python3 >= 3.9, standard library only, stack-agnostic.
+"""Shared helpers for code-writer hooks. Needs python3 >= 3.9, standard library only, stack-agnostic.
 
 Nothing in here may name a language, framework or package manager: what the repo uses is read from
 the command map in CLAUDE.md and from the optional pattern files under .claude/rules/.
@@ -36,7 +36,7 @@ def project_dir(payload: dict | None = None) -> str:
 
 def block(rule: str, message: str, alternative: str | None = None) -> None:
     """Block the action: stderr becomes the feedback the agent sees."""
-    lines = [f'[rln-agent] BLOCKED by rule {rule}: {message}']
+    lines = [f'[code-writer] BLOCKED by rule {rule}: {message}']
     if alternative:
         lines.append(f'Do this instead: {alternative}')
     sys.stderr.write('\n'.join(lines) + '\n')
@@ -50,7 +50,7 @@ def ask(reason: str) -> None:
         'hookSpecificOutput': {
             'hookEventName': 'PreToolUse',
             'permissionDecision': 'ask',
-            'permissionDecisionReason': f'[rln-agent] {reason}',
+            'permissionDecisionReason': f'[code-writer] {reason}',
         }
     }, ensure_ascii=False, separators=(',', ':')))
     sys.stdout.flush()
@@ -125,7 +125,7 @@ def current_branch(cwd: str):
 
 
 def protected_branches() -> list:
-    from_env = os.environ.get('RLN_PROTECTED_BRANCHES')
+    from_env = os.environ.get('CODE_WRITER_PROTECTED_BRANCHES')
     if from_env:
         return [s.strip() for s in from_env.split(',') if s.strip()]
     return ['main', 'master', 'develop', 'staging', 'release']

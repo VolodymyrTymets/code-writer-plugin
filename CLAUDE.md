@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-This is the **source of the `rln-agent` Claude Code plugin** for Python projects, not an application. It is also the plugin marketplace (`.claude-plugin/marketplace.json`, marketplace name `rln`, plugin `source: "./"`). There is no build step and no `package.json`; everything is Markdown, JSON and stdlib-only Python 3.9+ scripts. Maintainers install `requirements-dev.txt` (pytest) to run the tests.
+This is the **source of the `code-writer` Claude Code plugin** for Python and TypeScript projects, not an application. It is also the plugin marketplace (`.claude-plugin/marketplace.json`, marketplace name `code-writer`, plugin `source: "./"`). There is no build step and no `package.json`; everything is Markdown, JSON and stdlib-only Python 3.9+ scripts. Maintainers install `requirements-dev.txt` (pytest) to run the tests.
 
 The SessionStart hook of an installed copy may say "no CLAUDE.md - run /setup". That is for repos that use the plugin. Do not run `/setup` here.
 
@@ -37,7 +37,7 @@ The hook lists live in `tests/test_structure.py` (`CORE_SKILLS`, `STACK_SKILLS`,
 - Every block message names a rule ID (A1–A4 git, B1 definition of done, B4 plan approval, C3 protected path, C4/C5 destructive and production, `py-tooling-1..3` dependencies, G2 no project knowledge). The IDs are defined in `rules/core/CLAUDE.template.md`. Keep message text and IDs stable, since docs and tests refer to them.
 - `guard-git` and `guard-destructive` match on the command text, so a heredoc or `echo` that merely *contains* `rm -rf`, `curl … | sh` or `gh release create` is blocked as well. When writing such text into a file from the shell, use the Write tool instead.
 
-**Workflow:** `/feature` → `/plan` (`plan-feature`) → human adds `Approved-by:` to `docs/features/<TICKET>/plan.md` → `/analyze` (`analyze-plan`, runs in the write-free `plan-gate` agent fork, referenced as `rln-agent:plan-gate`) → `/implement` (`develop-feature`) → `/review-pr`.
+**Workflow:** `/feature` → `/plan` (`plan-feature`) → human adds `Approved-by:` to `docs/features/<TICKET>/plan.md` → `/analyze` (`analyze-plan`, runs in the write-free `plan-gate` agent fork, referenced as `code-writer:plan-gate`) → `/implement` (`develop-feature`) → `/review-pr`.
 
 **Command names come from each skill's frontmatter `name:`, not its directory.** `plan-feature/` answers to `/plan`. The map is `COMMANDS` in `tests/test_structure.py`. The test fails if a skill drifts from it, if a name collides with a built-in (`/review` is one, hence `/review-pr`), or if any doc references a command that does not exist. Commands planned but not built may appear only in `README.md` and `CHANGELOG.md`.
 
