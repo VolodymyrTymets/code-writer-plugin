@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Day-one bootstrap of the rln-agent config in a repository. Greenfield runs a guided interview; brownfield derives the rules from the code that already exists; the stack layer is detected and installed selectively. Produces CLAUDE.md, .claude/rules, .mcp.json, docs/ and the CI checks as one PR.
+description: Day-one bootstrap of the code-writer config in a repository. Greenfield runs a guided interview; brownfield derives the rules from the code that already exists; the stack layer is detected and installed selectively. Produces CLAUDE.md, .claude/rules, .mcp.json, docs/ and the CI checks as one PR.
 argument-hint: "[greenfield|brownfield] (auto-detected if omitted)"
 disable-model-invocation: true
 ---

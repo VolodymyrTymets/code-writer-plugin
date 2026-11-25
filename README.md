@@ -1,6 +1,6 @@
-# rln-agent
+# code-writer
 
-A Claude Code plugin that gives a Python repository one spec-driven workflow (plan → human approval → gate →
+A Claude Code plugin that gives a Python (TypeScript support is planned) repository one spec-driven workflow (plan → human approval → gate →
 implement → self-review → draft PR), a verification-first definition of done, reviewer subagents, and hooks that
 mechanically block the mistakes a prompt alone does not prevent. A Python layer adds rules for tooling, code and
 tests, a dependency-manager guard and an opt-in formatter.
@@ -19,8 +19,8 @@ Maintaining the plugin itself? See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Quick start
 
 ```bash
-claude plugin marketplace add VolodymyrTymets/rln-agent
-claude plugin install rln-agent@rln
+claude plugin marketplace add VolodymyrTymets/code-writer-plugin
+claude plugin install code-writer@code-writer
 ```
 
 `marketplace add` fails with "SSH authentication failed" or "Repository not found"? See
@@ -41,9 +41,9 @@ To make the plugin install for everyone who opens the repo, `/setup` also writes
 
 ```json
 {
-  "enabledPlugins": { "rln-agent@rln": true },
+  "enabledPlugins": { "code-writer@code-writer": true },
   "extraKnownMarketplaces": {
-    "rln": { "source": { "source": "github", "repo": "VolodymyrTymets/rln-agent" } }
+    "code-writer": { "source": { "source": "github", "repo": "VolodymyrTymets/code-writer-plugin" } }
   }
 }
 ```
@@ -74,7 +74,7 @@ spec and the plan itself stay writable while you wait.
 | `/fix-bug` | Reproduce first, root cause, minimal fix, regression test |
 | `/write-tests`, `/write-docs` | Test and documentation procedures |
 
-Every command also works namespaced, e.g. `/rln-agent:plan`, if another plugin owns the short name.
+Every command also works namespaced, e.g. `/code-writer:plan`, if another plugin owns the short name.
 
 `/feature` never starts on its own: the model cannot invoke it. If you just say "build ABC-142", you get
 `/plan` and then `/implement` — the approval step is still enforced, by the hook rather than by the wrapper.
@@ -92,7 +92,7 @@ Every block names a rule ID and the allowed alternative. The common ones:
 | **A1–A4** — git | Commit/push on a protected branch, plain `--force`, `--no-verify`, amending pushed commits, merging or approving a PR | Branch first; use `--force-with-lease`; merging stays a human action |
 | **py-tooling-1…3** — dependencies | A different installer than the repo declares, `pip install` outside a venv, `--break-system-packages`, deleting a lock or requirements file | Use the declared manager, install through `.venv/bin/pip` or an activated venv, change the declaration instead of deleting it. A new runtime dependency asks for confirmation |
 
-Protected branches default to `main master develop staging release`; set `RLN_PROTECTED_BRANCHES=a,b,c` to change them.
+Protected branches default to `main master develop staging release`; set `CODE_WRITER_PROTECTED_BRANCHES=a,b,c` to change them.
 
 ## Configuring a repository
 

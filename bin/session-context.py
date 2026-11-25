@@ -12,7 +12,7 @@ from lib.util import read_payload, project_dir, git, current_branch, is_protecte
 
 p = read_payload()
 root = project_dir(p)
-out = ['## Session context (rln-agent)']
+out = ['## Session context (code-writer)']
 branch = current_branch(root)
 
 if branch:

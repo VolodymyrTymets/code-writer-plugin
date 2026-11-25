@@ -50,7 +50,7 @@ save_state(root, p.get('session_id'), s)
 edits = s['codeEdits']
 files = ', '.join(edits[:8]) + (f', +{len(edits) - 8} more' if len(edits) > 8 else '')
 sys.stderr.write(
-    f'[rln-agent] Rule B1 - not done yet. Code changed this session ({files}) but these are missing:\n'
+    f'[code-writer] Rule B1 - not done yet. Code changed this session ({files}) but these are missing:\n'
     + '\n'.join(f'  - {m}' for m in missing)
     + '\nRun them, then report the real output in the evidence block. Run each one on its own: a command behind '
     'a pipe, a "|| true" or a ";" reports someone else\'s exit code, so it does not count as verified. '

@@ -5,6 +5,9 @@ Format: **Deleted** first — a smaller plugin each release is the goal.
 ## Unreleased
 
 ### Deleted
+- **The `rln-agent` name**: plugin `rln-agent`, marketplace `rln` and repository `rln-agent` are gone. The plugin is
+  now `code-writer`, the marketplace `code-writer` and the repository `code-writer-plugin`. The environment variable
+  `RLN_PROTECTED_BRANCHES` is removed with no fallback; use `CODE_WRITER_PROTECTED_BRANCHES`.
 - **Node**: the nine `bin/*.mjs` hooks, `bin/lib/util.mjs` and the two `tests/*.test.mjs` suites. Node.js is no longer a
   requirement of the plugin or of its tests.
 - The `format the changed files` row and its table in the Python stack section, with `{{CMD_FORMAT}}`.
@@ -12,6 +15,9 @@ Format: **Deleted** first — a smaller plugin each release is the goal.
 - The `build-validator` agent (typecheck and build runner); `test-runner` and `code-reviewer` remain.
 
 ### Changed
+- Renamed to `code-writer`, version 0.2.0. Install with `claude plugin install code-writer@code-writer`; existing
+  users must reinstall and change `rln-agent@rln` in their `enabledPlugins`. Hook messages are prefixed `[code-writer]`
+  and the plan gate is `code-writer:plan-gate`. The description now says Python and TypeScript projects.
 - Hooks and tests are Python. `bin/*.py` use only the standard library and run as `python3 bin/<name>.py` (Python 3.9+),
   with the same rule IDs and block messages. `tests/` is pytest (`requirements-dev.txt`), same cases as before plus
   parametrised variants. The old and new helpers were compared on a shared corpus (0 differences) and the old and new

@@ -3,7 +3,7 @@ name: analyze
 description: The pre-implementation gate. Use after a plan exists and before any code is written, to check the plan against the project constitution, the path rules, the architecture and the acceptance criteria. Blocks implementation when it finds a violation.
 argument-hint: "[path to plan.md, defaults to the current feature plan]"
 context: fork
-agent: rln-agent:plan-gate
+agent: code-writer:plan-gate
 background: false
 allowed-tools: Read, Grep, Glob, Bash(git diff:*), Bash(git status:*), Bash(git rev-parse:*)
 ---
@@ -12,7 +12,7 @@ allowed-tools: Read, Grep, Glob, Bash(git diff:*), Bash(git status:*), Bash(git 
 
 You are a gate, not an author. **Read-only.** Output a verdict, not a rewrite.
 
-This skill runs **forked** (`context: fork`, `agent: rln-agent:plan-gate`): a fresh context with no write tools and
+This skill runs **forked** (`context: fork`, `agent: code-writer:plan-gate`): a fresh context with no write tools and
 no memory of the conversation that wrote the plan. That is deliberate — the context that wrote the plan is the worst
 judge of it. It also means nobody has to remember to ask for a fresh reader, and nothing you find here can be
 answered with "but earlier we agreed…": if a decision is not on disk, it does not count.
