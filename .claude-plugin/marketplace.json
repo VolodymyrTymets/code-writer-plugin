@@ -1,0 +1,14 @@
+{
+  "name": "rln",
+  "description": "Claude Code plugin marketplace for rln-agent, a Python workflow and guardrail config.",
+  "owner": {
+    "name": "Volodymyr Tymets"
+  },
+  "plugins": [
+    {
+      "name": "rln-agent",
+      "source": "./",
+      "description": "Claude Code config for Python projects: constitution, spec-driven workflow with gates, verification-first definition of done, reviewer subagents, mechanical hooks, plus a Python rule layer."
+    }
+  ]
+}

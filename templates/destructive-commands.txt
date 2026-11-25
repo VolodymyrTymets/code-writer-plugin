@@ -1,0 +1,9 @@
+# Extra destructive command patterns for this repo, one JavaScript regex per line, case-insensitive.
+# Read by the guard-destructive hook and blocked with rule C4.
+# Core already blocks: rm -rf outside build dirs, git clean -fdx, docker volume destruction, infra CLIs,
+# publish/deploy/submit, anything aimed at a production host, piping a download into a shell.
+#
+# Add what is specific to this stack or project. Examples of the shape:
+# ^\s*\S+\s+cache\s+clear\s+--all\b
+# \b(scp|ssh|rsync)\b.*\bpi@
+# \bseed\b.*--wipe\b

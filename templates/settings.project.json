@@ -1,0 +1,57 @@
+{
+  "enabledPlugins": { "rln-agent@rln": true },
+  "extraKnownMarketplaces": {
+    "rln": { "source": { "source": "github", "repo": "VolodymyrTymets/rln-agent" } }
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "deny": [
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(!.env.example)",
+      "Read(!.env.sample)",
+      "Read(!.env.template)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/*.p8)",
+      "Read(./**/*.p12)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)",
+      "Read(./**/*.mobileprovision)",
+      "Read(./**/id_rsa*)",
+      "Read(./**/*credentials*.json)",
+      "Read(./**/*service-account*.json)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr review:*)",
+      "Bash(gh pr ready:*)",
+      "Bash(gh release create:*)",
+      "Bash(git push --force:*)",
+      "Bash(twine upload:*)",
+      "Bash(uv publish:*)",
+      "Bash(poetry publish:*)",
+      "mcp__github__merge*"
+    ],
+    "allow": [
+      "Read(./**)", "Grep", "Glob",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)",
+      "Bash(git switch:*)", "Bash(git commit:*)", "Bash(git fetch:*)", "Bash(git stash:*)",
+      "Bash({{CMD_INSTALL}}:*)",
+      "Bash({{CMD_LINT}}:*)",
+      "Bash({{CMD_TEST}}:*)",
+      "Bash({{CMD_TEST_AFFECTED}}:*)",
+      "Bash({{CMD_BUILD}}:*)",
+      "mcp__context7__*",
+      "mcp__serena__*"
+    ],
+    "ask": [
+      "Bash(git push:*)", "Bash(gh pr create:*)", "Bash(gh issue:*)",
+      "Bash({{CMD_ADD_DEPENDENCY}}:*)",
+      "Bash(docker:*)", "Bash(docker compose:*)",
+      "Edit({{DEPENDENCY_MANIFEST}})",
+      "Edit(.github/workflows/**)", "Edit(CLAUDE.md)", "Edit(.claude/**)",
+      "mcp__github__create*", "mcp__github__update*"
+    ]
+  },
+  "_rln_note": "Placeholders are filled by /setup from this repo's real command map; the stack layer adds its own allow/ask entries in step 4.5. The deny list is a starter list this repo then owns, the same arrangement as protected-paths.md and destructive-commands.txt: a plugin's own settings.json applies only `agent` and `subagentStatusLine` and silently ignores every other key, so permissions exist only where they are written here, in user settings, or in managed settings - nothing upstream updates this block later. /setup adapts it in both directions: it adds what the plugin cannot know about (infrastructure state, registry and cluster credentials, this ecosystem's publish verbs) and removes or carves out what over-blocks this repo, because the patterns match by extension and substring. Rules resolve deny, then ask, then allow, so `Read(./**)` below cannot re-open a denied path. The three `!` lines are gitignore negations that carve the example files back out - they hold no secrets and are where the variable names live, so blocking them costs the agent the answer to \"which variables does this service need\" and buys nothing. Two things about those three lines are load-bearing and look like untidiness: a negation applies only to rules listed ABOVE it, so they stay directly under the `.env` rules, and it must stay a bare basename - it matches that filename at any depth, while the anchored style of its neighbours (`Read(!./**/.env.example)`) carves out nothing at all and reports nothing. Both were verified in a fixture repo; do not normalise them. A Read deny also blocks Edit and Write on the same path, which is deliberate: writing a secret is a human action. deny and ask apply as soon as the file is read; allow waits for the developer to trust the folder. A Bash deny rule matches the command text rather than the program, so it is a guardrail against the usual invocation and not a security boundary - guard-destructive and guard-git cover the same ground by shape, and OS-level enforcement would need the sandbox. bypassPermissions is not allowed in this repo - if you deploy managed settings, set disableBypassPermissionsMode there."
+}
