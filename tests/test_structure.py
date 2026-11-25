@@ -95,7 +95,7 @@ HOOKS = json.loads(read(ROOT / 'hooks' / 'hooks.json'))
 
 
 def setup_text() -> str:
-    files = [ROOT / 'skills' / 'setup-project' / f for f in ('SKILL.md', 'references/stack-python.md', 'references/interview.md')]
+    files = [ROOT / 'skills' / 'setup-project' / f for f in ('SKILL.md', 'references/stack-python.md', 'references/stack-typescript.md', 'references/interview.md')]
     return '\n'.join(read(f) for f in files if f.exists())
 
 
@@ -276,6 +276,48 @@ def test_stacks_line_in_the_template_matches_the_contract():
                 fails.append(f'"{sample}": {v} is not a rules/stack-<name>/ directory')
     if 'Stacks:' not in read(ROOT / 'CONTRIBUTING.md'):
         fails.append('CONTRIBUTING.md does not document the Stacks: contract')
+    report(fails)
+
+
+def test_setup_asks_the_stack_before_copying_and_exports_only_the_chosen_stacks():
+    text = setup_text()
+    skill = read(ROOT / 'skills' / 'setup-project' / 'SKILL.md')
+    must = ['AskUserQuestion', 'pyproject.toml', 'requirements', 'package.json', 'tsconfig.json', 'Stacks:', 'Stacks: none',
+            'two levels', 'node_modules', 'the user\'s answer wins', 'delete nothing', 'never append', 'no `Stacks:` line']
+    fails = [f'setup-project does not mention "{m}"' for m in must if m.lower() not in text.lower()]
+    if re.search(r'not python,? skip', text, re.I):
+        fails.append('setup-project still skips the stack step for a non-Python repo - it must branch per stack')
+    i_stack, i_write = skill.find('## Step 1.5'), skill.find('## Step 4 ')
+    if not 0 <= i_stack < i_write:
+        fails.append('setup-project: the stack question (Step 1.5) must come before the config is written (Step 4)')
+    report(fails)
+
+
+def export_manifest(stack: str) -> list:
+    """The `## Export manifest` bullet list of skills/setup-project/references/stack-<stack>.md."""
+    text = read(ROOT / 'skills' / 'setup-project' / 'references' / f'stack-{stack}.md')
+    m = re.search(r'^## Export manifest\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+    return re.findall(r'^- `([^`]+)`', m.group(1), re.M) if m else []
+
+
+def test_export_sets_for_python_typescript_and_both_do_not_overlap():
+    fails = []
+    sets = {s: export_manifest(s) for s in ('python', 'typescript')}
+    for s, files in sets.items():
+        if not files:
+            fails.append(f'references/stack-{s}.md has no "## Export manifest" bullet list')
+        if len(files) != len(set(files)):
+            fails.append(f'stack-{s} manifest lists a file twice')
+        for f in files:
+            if any(o in f for o in sets if o != s):
+                fails.append(f'stack-{s} manifest names another stack\'s file: {f}')
+            if s == 'python' and not (ROOT / f).exists():
+                fails.append(f'stack-python manifest lists {f}, which does not exist')
+            if s == 'typescript' and (ROOT / 'rules' / 'stack-typescript').exists() and not (ROOT / f).exists():
+                fails.append(f'stack-typescript manifest lists {f}, which does not exist (T3 renamed it?)')
+    both = sets['python'] + sets['typescript']
+    if len(both) != len(set(both)):
+        fails.append('the Both export set contains a file twice')
     report(fails)
 
 

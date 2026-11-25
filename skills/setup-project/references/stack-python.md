@@ -65,3 +65,14 @@ Re-check the line count afterwards: `CLAUDE.md` stays under 200 lines.
 - [ ] Stack section appended and filled; `CLAUDE.md` still under 200 lines
 - [ ] `protected-paths.md` and `destructive-commands.txt` extended with this repo's real entries
 - [ ] Every command in the map verified to run (or marked `none`)
+
+## Export manifest
+
+Exactly these files are copied for `python`, each once. `.claude/rules/` gets the rule files, `CLAUDE.md` gets the section, the two shared files get the template blocks.
+
+- `rules/stack-python/python-tooling.md`
+- `rules/stack-python/python-core.md`
+- `rules/stack-python/testing-python.md`
+- `rules/stack-python/CLAUDE.stack-section.md`
+- `templates/stack-python/protected-paths.py.md`
+- `templates/stack-python/destructive-commands.py.txt`

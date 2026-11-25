@@ -17,7 +17,7 @@ Batch these. Skip anything the repo already answered in step 1. Target: under 15
 10. The test tooling per level: unit, integration, end to end.
 11. **The command map** — install, lint, unit tests, affected tests, build, dev, e2e. Run each one to confirm it works; a command map with a wrong entry is worse than an empty one.
 12. Environments: local, staging, production — how each is reached and what the agent may touch (local and staging only, rule C5).
-13. **Which stack layer applies?** For a Python repo, step 4.5 detects it — confirm the dependency manager, the interpreter version, the linter and the test runner. For any other stack, note which rules this repo will need in `.claude/rules/` and who writes them.
+13. **Which stack layer applies?** Already answered in step 1.5, so do not ask again. For each chosen stack, step 4.5 detects the tooling: confirm the dependency manager, the runtime version, the linter and the test runner. For `Stacks: none`, note which rules this repo will need in `.claude/rules/` and who writes them.
 
 ## Round 3 — process
 14. Protected branches and the branch naming convention.
