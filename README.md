@@ -1,6 +1,6 @@
 # code-writer
 
-A Claude Code plugin that gives a Python (TypeScript support is planned) repository one spec-driven workflow (plan → human approval → gate →
+A Claude Code plugin that gives a Python or TypeScript repository one spec-driven workflow (plan → human approval → gate →
 implement → self-review → draft PR), a verification-first definition of done, reviewer subagents, and hooks that
 mechanically block the mistakes a prompt alone does not prevent. A Python layer adds rules for tooling, code and
 tests, a dependency-manager guard and an opt-in formatter.
@@ -29,13 +29,15 @@ claude plugin install code-writer@code-writer
 Then, inside the Python repository:
 
 ```
-/setup                  # once per repo: interview or brownfield discovery, then the Python layer
+/setup                  # once per repo: asks the stack (TypeScript, Python or Both), then interview or brownfield discovery
 /feature ABC-142        # the whole lifecycle for one ticket
 ```
 
-`/setup` opens a PR with `CLAUDE.md` (the constitution and the command map), the rules for Python, `.claude/settings.json`
+`/setup` opens a PR with `CLAUDE.md` (the constitution and the command map), the rules for the stacks you chose, `.claude/settings.json`
 with the permission deny list, `.mcp.json`, the `docs/` skeleton, a PR template and the CI agent checks. Review and
 merge it before starting feature work — until then the hooks have no command map to read.
+
+`/setup` asks the stack first and installs only what you answer: **Python** gets the Python layer, **TypeScript** the TypeScript layer (its rule files are not shipped yet, so today the answer is only recorded), **Both** each layer once. The answer is one line in `CLAUDE.md`, `Stacks: python, typescript`, which a re-run reads. Your answer wins over what `/setup` detects.
 
 To make the plugin install for everyone who opens the repo, `/setup` also writes this into `.claude/settings.json`:
 
@@ -66,7 +68,7 @@ spec and the plan itself stay writable while you wait.
 | Command | What it does |
 |---------|--------------|
 | `/feature <TICKET>` | **Start here.** The whole lifecycle: plan → human approval → gate → implement → self-review → draft PR |
-| `/setup` | Once per repo — interview or brownfield discovery, then the Python layer |
+| `/setup` | Once per repo — asks the stack first (TypeScript, Python or Both), then interview or brownfield discovery |
 | `/plan <TICKET>` | Reads code and docs, asks only real gaps, writes spec + plan |
 | `/analyze` | The gate: plan vs constitution, rules, architecture, acceptance criteria. Runs in a read-only fork, so it only sees what is **written in the plan** |
 | `/implement <TICKET>` | One requirement at a time, a quality gate after each, tests, docs, **draft PR** |
