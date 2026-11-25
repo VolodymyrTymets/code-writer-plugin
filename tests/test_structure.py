@@ -95,7 +95,7 @@ HOOKS = json.loads(read(ROOT / 'hooks' / 'hooks.json'))
 
 
 def setup_text() -> str:
-    files = [ROOT / 'skills' / 'setup-project' / f for f in ('SKILL.md', 'references/stack-python.md', 'references/interview.md')]
+    files = [ROOT / 'skills' / 'setup-project' / f for f in ('SKILL.md', 'references/stack-python.md', 'references/stack-typescript.md', 'references/interview.md')]
     return '\n'.join(read(f) for f in files if f.exists())
 
 
@@ -249,13 +249,91 @@ def test_every_placeholder_in_the_rules_library_is_documented_in_setup():
     # every {{PLACEHOLDER}} in the rules library must be documented in /setup, or nothing fills it
     text = setup_text()
     placeholders = set()
-    for layer in ('core', 'stack-python'):
+    for layer in sorted(p.name for p in (ROOT / 'rules').iterdir() if p.is_dir()):
         d = ROOT / 'rules' / layer
         if d.exists():
             for r in (f for f in os.listdir(d) if f.endswith('.md')):
                 placeholders.update(re.findall(r'\{\{([A-Z0-9_]+)\}\}', read(d / r)))
     report([f'placeholder {{{{{ph}}}}} is used in rules/ but not documented in setup-project - nothing would fill it'
             for ph in sorted(placeholders) if ph not in text])
+
+
+STACKS_LINE = re.compile(r'^Stacks:\s*(.+)$', re.M)   # the contract in CONTRIBUTING.md; hooks and /setup re-runs read it
+
+
+def known_stacks() -> list:
+    """A stack is known to /setup when its reference exists: skills/setup-project/references/stack-<name>.md."""
+    return sorted(p.stem[len('stack-'):] for p in (ROOT / 'skills' / 'setup-project' / 'references').glob('stack-*.md'))
+
+
+def test_stacks_line_in_the_template_matches_the_contract():
+    # the line is plain text: bold or backticks would end up inside the captured value
+    template = read(ROOT / 'rules' / 'core' / 'CLAUDE.template.md')
+    lines = [l for l in template.split('\n') if l.startswith('Stacks:')]
+    fails = []
+    if lines != ['Stacks: {{STACKS}}']:
+        fails.append(f'rules/core/CLAUDE.template.md must hold exactly one line "Stacks: {{{{STACKS}}}}", found {lines}')
+    known = known_stacks()
+    for sample in ('Stacks: python', 'Stacks: typescript', 'Stacks: python, typescript', 'Stacks: none'):
+        for v in (v.strip() for v in STACKS_LINE.search(sample).group(1).split(',')):
+            if v != 'none' and v not in known:
+                fails.append(f'"{sample}": {v} has no skills/setup-project/references/stack-{v}.md')
+    contributing = read(ROOT / 'CONTRIBUTING.md')
+    if STACKS_LINE.pattern not in contributing:
+        fails.append(f'CONTRIBUTING.md must state the contract regex {STACKS_LINE.pattern} verbatim')
+    if 'no bold' not in contributing:
+        fails.append('CONTRIBUTING.md must say the Stacks: line is plain text (no bold, no backticks)')
+    report(fails)
+
+
+def test_setup_prose_asks_the_stack_before_copying_and_names_the_rerun_rules():
+    text = setup_text()
+    skill = read(ROOT / 'skills' / 'setup-project' / 'SKILL.md')
+    must = ['AskUserQuestion', 'pyproject.toml', 'requirements', 'package.json', 'tsconfig.json', 'Stacks:', 'Stacks: none',
+            'two levels', 'node_modules', 'the user\'s answer wins', 'delete nothing', 'never append', 'no `Stacks:` line', 'already installed', 'Do not create a stub']
+    fails = [f'setup-project does not mention "{m}"' for m in must if m.lower() not in text.lower()]
+    if re.search(r'not python,? skip', text, re.I):
+        fails.append('setup-project still skips the stack step for a non-Python repo - it must branch per stack')
+    i_stack, i_write = skill.find('## Step 1.5'), skill.find('## Step 4 ')
+    if not 0 <= i_stack < i_write:
+        fails.append('setup-project: the stack question (Step 1.5) must come before the config is written (Step 4)')
+    report(fails)
+
+
+def export_manifest(stack: str) -> list:
+    """The `## Export manifest` bullet list of skills/setup-project/references/stack-<stack>.md."""
+    text = read(ROOT / 'skills' / 'setup-project' / 'references' / f'stack-{stack}.md')
+    m = re.search(r'^## Export manifest\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+    return re.findall(r'^- `([^`]+)`', m.group(1), re.M) if m else []
+
+
+def test_export_sets_for_python_typescript_and_both_do_not_overlap():
+    fails = []
+    stacks = known_stacks()
+    sets = {s: export_manifest(s) for s in stacks}
+    for s, files in sets.items():
+        if not files:
+            fails.append(f'references/stack-{s}.md has no "## Export manifest" bullet list')
+        if len(files) != len(set(files)):
+            fails.append(f'stack-{s} manifest lists a file twice')
+        for f in files:
+            for o in stacks:
+                if o != s and re.search(rf'(?<![a-z]){o}(?![a-z])', f):
+                    fails.append(f'stack-{s} manifest names stack-{o}\'s file: {f}')
+        shipped = (ROOT / 'rules' / f'stack-{s}').exists()
+        for f in files:
+            if shipped and not (ROOT / f).exists():
+                fails.append(f'stack-{s} manifest lists {f}, which does not exist')
+        # completeness: a shipped file that is not in the manifest would never be exported
+        for d in (ROOT / 'rules' / f'stack-{s}', ROOT / 'templates' / f'stack-{s}'):
+            if d.exists():
+                for p in sorted(d.iterdir()):
+                    if not p.name.startswith('.') and rel(p) not in files:
+                        fails.append(f'{rel(p)} exists but is not in the stack-{s} manifest, so /setup would never copy it')
+    both = [f for files in sets.values() for f in files]
+    if len(both) != len(set(both)):
+        fails.append('the Both export set contains a file twice')
+    report(fails)
 
 
 # ---------------- hooks wiring ----------------

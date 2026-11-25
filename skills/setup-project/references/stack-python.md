@@ -28,7 +28,7 @@ If the repo already has hand-written Python rules in `.claude/rules/`, **merge, 
 
 ## Step 3 — Append the stack section to the constitution
 
-Take `rules/stack-python/CLAUDE.stack-section.md` and append it to `CLAUDE.md` after the core command map.
+Take `rules/stack-python/CLAUDE.stack-section.md` and, **only if it is not already in `CLAUDE.md`**, append it to `CLAUDE.md` after the core command map.
 
 Fill the core placeholders for a Python repo:
 
@@ -49,7 +49,7 @@ Re-check the line count afterwards: `CLAUDE.md` stays under 200 lines.
 
 ## Step 4 — Extend the project-owned extension points
 
-- `.claude/rules/protected-paths.md` — append the entries from `templates/stack-python/protected-paths.py.md`, plus this repo's own generated or binary output (compiled UI resources, model files, stubs).
+- (each append below only if its block is not already there) `.claude/rules/protected-paths.md` — append the entries from `templates/stack-python/protected-paths.py.md`, plus this repo's own generated or binary output (compiled UI resources, model files, stubs).
 - `.claude/rules/destructive-commands.txt` — append `templates/stack-python/destructive-commands.py.txt`, plus anything this repo can do irreversibly (copying to a device, wiping a data directory).
 
 ## Step 5 — Settings and verification
@@ -65,3 +65,14 @@ Re-check the line count afterwards: `CLAUDE.md` stays under 200 lines.
 - [ ] Stack section appended and filled; `CLAUDE.md` still under 200 lines
 - [ ] `protected-paths.md` and `destructive-commands.txt` extended with this repo's real entries
 - [ ] Every command in the map verified to run (or marked `none`)
+
+## Export manifest
+
+Exactly these files are copied for `python`, each once. `.claude/rules/` gets the rule files, `CLAUDE.md` gets the section, the two shared files get the template blocks.
+
+- `rules/stack-python/python-tooling.md`
+- `rules/stack-python/python-core.md`
+- `rules/stack-python/testing-python.md`
+- `rules/stack-python/CLAUDE.stack-section.md`
+- `templates/stack-python/protected-paths.py.md`
+- `templates/stack-python/destructive-commands.py.txt`

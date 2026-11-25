@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Day-one bootstrap of the code-writer config in a repository. Greenfield runs a guided interview; brownfield derives the rules from the code that already exists; the stack layer is detected and installed selectively. Produces CLAUDE.md, .claude/rules, .mcp.json, docs/ and the CI checks as one PR.
+description: Day-one bootstrap of the code-writer config in a repository. Greenfield runs a guided interview; brownfield derives the rules from the code that already exists; the stack is asked first and only the chosen stack layers are installed. Produces CLAUDE.md, .claude/rules, .mcp.json, docs/ and the CI checks as one PR.
 argument-hint: "[greenfield|brownfield] (auto-detected if omitted)"
 disable-model-invocation: true
 ---
@@ -19,6 +19,17 @@ The dependency manifest(s) and any workspace declaration, the lockfile, the runt
 
 From this, fill as much of the command map as you can **without asking**: install, lint, test, affected tests, build, dev, e2e. Only ask about what the repo does not tell you.
 
+## Step 1.5 — Which stack? (before anything is copied)
+
+Ask this before the interview and before any file is copied or written. Greenfield or brownfield, the question is the same.
+
+1. **Read an existing answer.** If `CLAUDE.md` has a `Stacks:` line, that is the answer: confirm it in one line and move on. If it has **no `Stacks:` line** but already holds a stack section from an earlier `/setup`, infer the stack from the evidence (an S1 bullet citing `.claude/rules/python-tooling.md`, or that file present in `.claude/rules/`), ask the human to confirm, insert the line directly above `Dependency manager:` in step 4, and never append the section again.
+2. **Detect.** Look at the repo root and two levels down (`apps/*`, `packages/*`), skipping `node_modules`, `.venv` and `venv`. `pyproject.toml` or `requirements*.txt` suggests Python. `package.json` or `tsconfig.json` suggests TypeScript. Both together suggests Both. Nothing found (an empty greenfield repo) means no suggestion.
+3. **Ask** with `AskUserQuestion`: TypeScript, Python or Both, with the detected option first. The user's answer wins over detection. Any other stack (Go, Rust...) is answered through "Other" and recorded as `Stacks: none`; the PR then names which stack rules the repo will need and who writes them.
+4. **Hold the answer**; step 4.1 writes it as `{{STACKS}}` into the `Stacks:` line of `CLAUDE.md` (format: see CONTRIBUTING.md). Once it exists, step 4.5, the interview and every later re-run read this line and nothing else. Do not create a stub `CLAUDE.md` early.
+
+Re-run with a changed answer (or the same one): install only the stacks that are in the line but not yet installed, and skip a stack that is already installed (its section is in `CLAUDE.md` and its files are in `.claude/rules/`). For a stack that was dropped, list its files and delete nothing.
+
 ## Step 2 — Greenfield: the interview
 
 Follow @references/interview.md. Rules: batch questions, never ask what step 1 already answered, and keep the whole interview under ~15 minutes of the human's time. `docs/BUSINESS_MODEL.md` goals and non-negotiables are **required** output — an unranked goal list gives the agent no way to break a tie later.
@@ -30,7 +41,7 @@ Follow @references/brownfield-discovery.md. The principle: **the constitution is
 ## Step 4 — Write the config
 
 1. `CLAUDE.md` from the plugin's `rules/core/CLAUDE.template.md`, every `{{PLACEHOLDER}}` filled. Confirmed brownfield conventions go under the project-specific section at the bottom. **Check the line count — if over 200, move depth into `.claude/rules/`.**
-2. `.claude/rules/` — `testing.md` and `protected-paths.md` from `rules/core/`, with the repo's real protected paths appended (dependency directories, build output, generated clients, platform build folders). Stack rule files come from `rules/stack-python/` in step 4.5 — **selectively**, never all of them.
+2. `.claude/rules/` — `testing.md` and `protected-paths.md` from `rules/core/`, with the repo's real protected paths appended (dependency directories, build output, generated clients, platform build folders). Stack rule files come from the chosen stacks' `rules/stack-<name>/` folders in step 4.5 — **only the chosen stacks**, never a stack "just in case".
 3. `.claude/settings.json` from `templates/settings.project.json` — `enabledPlugins` set, the repo's real commands in `allow` and `ask`. The whole `permissions` block is a **starter this repo then owns**: permissions cannot live in a plugin at all (only `agent` and `subagentStatusLine` apply from one; every other key is read and silently discarded), so nothing upstream updates any of it later. `allow` and `ask` fill mechanically from the command map, and a gap there shows up at once as extra prompts. `permissions.deny` is where a gap stays invisible: a missing rule changes nothing anyone sees, and for reads of secrets no hook covers the same ground, so a repo without it has no deny layer whatsoever. That is why it takes judgement rather than substitution — adapt it in both directions, neither is optional:
    - **Add** what the plugin cannot know about. Hunt for: infrastructure state that stores secrets in the clear (`*.tfstate`, `*.tfvars`), registry and cluster credentials (`.npmrc`, `.netrc`, `kubeconfig`, `*.ovpn`), framework secret stores (a Rails `master.key` and `credentials.yml.enc`, a `.pypirc`), and this ecosystem's irreversible publish verbs (`cargo publish`, `gem push`, `twine upload`, `helm push`, `flyctl deploy`).
    - **Remove or carve out** what over-blocks *this* repo — after seeing it block, not by guessing. The patterns match by extension and substring, so `*credentials*.json` catches a test fixture and `*.key` catches an i18n bundle; a `Read` deny also blocks writes, so the agent can neither read nor create the file. Either drop the entry or carve the file out with a `!` negation placed **below** the rule it carves from.
@@ -49,27 +60,20 @@ Follow @references/brownfield-discovery.md. The principle: **the constitution is
 | `{{PROJECT_NAME}}` | the repo / product name |
 | `{{PROTECTED_BRANCHES}}` | the repo's real protected branches (ask, then verify against branch protection) |
 | `{{CMD_INSTALL}}`, `{{CMD_LINT}}`, `{{CMD_TEST}}`, `{{CMD_TEST_AFFECTED}}`, `{{CMD_BUILD}}`, `{{CMD_DEV}}`, `{{CMD_E2E}}` | the declared task scripts, **each one actually run once** to confirm it works. Use `none` where the repo genuinely has no such task — never invent a command |
+| `{{STACKS}}` | the stack answer from step 1.5, written as `python`, `typescript`, `python, typescript` or `none`. Plain text, no bold, no backticks |
 | `{{DEPENDENCY_MANAGER}}` | the manifest's declared manager |
 | `{{RUNTIME_VERSION_FILE}}`, `{{RUNTIME_VERSION}}` | the version pin file the repo uses, and the version in it |
 | `{{I18N_NOTE}}` | `""` if the repo has no i18n, otherwise one clause naming the key convention |
 
 Any placeholder left unfilled is a bug: the agent will read it literally. `grep -r '{{' CLAUDE.md .claude/` must come back empty (step 6).
 
-## Step 4.5 — The Python stack layer
+## Step 4.5 — The stack layers
 
-Detect the Python tooling and install the Python rule files, following @references/stack-python.md. In short:
+For each stack in the `Stacks:` line, follow its reference: @references/stack-python.md or @references/stack-typescript.md. Each reference ends with an `## Export manifest`; copy exactly those files, each one once per repo (an already-installed stack is skipped, see step 1.5), and no file of a stack that was not chosen. `Stacks: none` skips this step.
 
-```bash
-ls uv.lock poetry.lock Pipfile requirements*.txt pyproject.toml .python-version ruff.toml 2>/dev/null
-ls -d .venv venv 2>/dev/null
-```
+In a repo with two stacks, `{{DEPENDENCY_MANAGER}}`, `{{RUNTIME_VERSION*}}` and `{{CMD_INSTALL}}` hold one entry per stack, labelled (`uv (python), pnpm (typescript)`; one install row per stack), so T3 allows each stack's own manager and not a second one for the same stack. `protected-paths.md` and `destructive-commands.txt` are shared files. Each stack appends its own block once, under a comment naming the stack, until they are split per stack.
 
-Install `python-tooling.md`, `python-core.md` and `testing-python.md` from `rules/stack-python/` into `.claude/rules/`,
-merging with any Python rules the repo already has instead of overwriting them. Then append the filled
-`rules/stack-python/CLAUDE.stack-section.md` to `CLAUDE.md` and extend `protected-paths.md` and
-`destructive-commands.txt` from `templates/stack-python/`.
-
-If the repo is not Python, skip this step and note in the PR which stack rules it will need and who writes them.
+Python: detect the tooling as in @references/stack-python.md, install the manifest's rule files (merged with any the repo already has, never overwritten), append the filled stack section, and extend `protected-paths.md` and `destructive-commands.txt` from its templates.
 
 ## Step 5 — Seed the knowledge layer
 
@@ -95,11 +99,12 @@ Open the PR, then tell the human: what was created, which conventions were adopt
 
 ## Definition of done
 - [ ] Mode detected and confirmed
+- [ ] Stack asked before any file was copied; the `Stacks:` line is in `CLAUDE.md`
 - [ ] Command map filled and every command verified to run
 - [ ] `CLAUDE.md` complete, under 200 lines, no placeholders
 - [ ] Rule files, settings, `.mcp.json`, `destructive-commands.txt`, `docs/`, PR template, CI check in place
 - [ ] `permissions.deny` present in `.claude/settings.json`, adapted to this repo in both directions, and observed to block a `.env` read while blocking nothing legitimate — no other layer carries it
-- [ ] Stack layer: the Python rule files installed (merged with the repo's own), stack section appended, `CLAUDE.md` still under 200 lines
+- [ ] Stack layers: only the chosen stacks' manifests installed, once each (merged with the repo's own), stack sections appended, `CLAUDE.md` still under 200 lines
 - [ ] Every command in the map verified to run (or marked `none`)
 - [ ] Knowledge docs actually filled, not left as templates
 - [ ] Existing decisions captured as ADRs (brownfield)

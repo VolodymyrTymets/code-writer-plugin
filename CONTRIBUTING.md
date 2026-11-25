@@ -81,3 +81,20 @@ a developer's turn and a missed block means the rule quietly stopped existing.
 3. `claude plugin validate ./ --strict` plus both test suites before opening a PR.
 4. `CHANGELOG.md` leads with **what was deleted** — a smaller core each quarter is the goal. A release that needs a
    manual step in existing installs says so at the top of its entry.
+
+## The `Stacks:` line
+
+`/setup` asks which stack a repo uses and records the answer as one line in the repo's `CLAUDE.md`. Every later
+`/setup` re-run reads it, and the stack hooks will read it too, so the format is a contract:
+
+- Shape: `Stacks: python, typescript`, matched by `^Stacks:\s*(.+)$`. Plain text: no bold, no backticks.
+- Values: the names of the stacks `/setup` knows, lowercase, comma separated. A stack is known when
+  `skills/setup-project/references/stack-<name>.md` exists with an `## Export manifest`. Its rule files may land later:
+  `typescript` is recorded before `rules/stack-typescript/` exists and installs nothing until then. `Stacks: none` means no
+  stack known to `/setup` (the PR names the missing rules).
+- Repos set up before this line existed have a stack section but no line. `/setup` infers the stack from the section,
+  asks for confirmation, inserts the line and does not append the section again.
+- Rollback: delete the line. `/setup` falls back to detect-then-confirm.
+- Each stack reference (`skills/setup-project/references/stack-<name>.md`) ends with an `## Export manifest`: a bullet
+  list of repo-relative paths, one per line. `/setup` copies exactly those files for a chosen stack, and
+  `tests/test_structure.py` checks that the sets for Python, TypeScript and Both never overlap.

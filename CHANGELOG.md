@@ -5,6 +5,7 @@ Format: **Deleted** first — a smaller plugin each release is the goal.
 ## Unreleased
 
 ### Deleted
+- **The "not Python, skip" branch of `/setup`**: step 4.5 no longer skips a repo that is not Python. It follows the `Stacks:` line instead.
 - **The `rln-agent` name**: plugin `rln-agent`, marketplace `rln` and repository `rln-agent` are gone. The plugin is
   now `code-writer`, the marketplace `code-writer` and the repository `code-writer-plugin`. The environment variable
   `RLN_PROTECTED_BRANCHES` is removed with no fallback; use `CODE_WRITER_PROTECTED_BRANCHES`.
@@ -15,6 +16,7 @@ Format: **Deleted** first — a smaller plugin each release is the goal.
 - The `build-validator` agent (typecheck and build runner); `test-runner` and `code-reviewer` remain.
 
 ### Changed
+- `/setup` asks first which stack the repo uses (TypeScript, Python or Both), detecting from `pyproject.toml`, `requirements*.txt`, `package.json` and `tsconfig.json`, and records `Stacks: python, typescript` in `CLAUDE.md`. Only the chosen stacks' files are copied, each once. Repos set up earlier get the line inferred and inserted on a re-run. `references/stack-typescript.md` is added; the TypeScript rule files themselves follow later, so choosing TypeScript records the line and installs nothing yet.
 - Renamed to `code-writer`, version 0.2.0. Install with `claude plugin install code-writer@code-writer`; existing
   users must reinstall and change `rln-agent@rln` in their `enabledPlugins`. Hook messages are prefixed `[code-writer]`
   and the plan gate is `code-writer:plan-gate`. The description now says Python and TypeScript projects.
