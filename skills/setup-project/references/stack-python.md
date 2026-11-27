@@ -45,6 +45,13 @@ There are no typecheck or format placeholders. If the repo already runs mypy or 
 
 Run each command once. If the lint command reports a backlog of existing findings, record the count in the command-map cell — fixing it is its own PR (rule C1).
 
+In a repo with two stacks, also put this line under the command map. It tells the definition-of-done gate which
+edited files need this stack's rows; narrow the globs where the layout allows (`services/api/**/*.py`):
+
+```text
+Gate paths (py): `**/*.py` `**/*.pyi` `**/pyproject.toml`
+```
+
 Re-check the line count afterwards: `CLAUDE.md` stays under 200 lines.
 
 ## Step 4 — Install the stack's guard files

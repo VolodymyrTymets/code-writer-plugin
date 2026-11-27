@@ -38,7 +38,9 @@ after the ask-first list now ask for confirmation. No file needs to change.
 - `rules/stack-typescript/protected-paths.md` is new.
 - TypeScript layer: `ts-tooling.md`, `ts-core.md`, `testing-ts.md`, stack rules `TS1`–`TS3`, destructive-command
   patterns, and React, NestJS and React Native files installed only when `package.json` lists the framework.
-- A repo with both stacks gets labelled command-map rows (`lint (ts)`). Running either row satisfies the gate.
+- A repo with both stacks gets labelled command-map rows (`lint (ts)`) and one `Gate paths (<label>)` line per stack.
+  The definition-of-done gate (B1) then requires the rows of every stack whose files were edited and names each missing
+  one; an `e2e` run no longer stands in for a split test row. Without the lines, either row satisfies the gate.
 - `/setup` asks first which stack the repo uses (TypeScript, Python or Both), detecting from `pyproject.toml`, `requirements*.txt`, `package.json` and `tsconfig.json`, and records `Stacks: python, typescript` in `CLAUDE.md`. Only the chosen stacks' files are copied, each once. Repos set up earlier get the line inferred and inserted on a re-run. `references/stack-typescript.md` is added.
 - Renamed to `code-writer`, version 0.2.0. Install with `claude plugin install code-writer@code-writer`; existing
   users must reinstall and change `rln-agent@rln` in their `enabledPlugins`. Hook messages are prefixed `[code-writer]`

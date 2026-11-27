@@ -12,8 +12,10 @@ import re
 import warnings
 from pathlib import Path
 
+import pytest
+
 from conftest import PLUGIN as ROOT
-from lib.util import _BUCKET_BY_TASK, matches_any
+from lib.util import _BUCKET_BY_TASK, gate_paths, matches_any
 
 CORE_SKILLS = ['setup-project', 'feature', 'plan-feature', 'analyze-plan', 'develop-feature',
                'write-tests', 'write-docs', 'review-pr', 'fix-bug']
@@ -294,6 +296,18 @@ def test_every_labelled_command_row_setup_names_stays_in_its_plain_rows_bucket()
     for task in labelled:
         for label in ('ts', 'py'):
             assert bucket(f'{task} ({label})') == bucket(task), f'{task} ({label})'
+
+
+# /setup copies these lines into a two-stack CLAUDE.md; one the hook cannot read leaves either row enough, silently.
+@pytest.mark.parametrize('stack, label, edited', [
+    ('python', 'py', ['app/a.py', 'pyproject.toml']),
+    ('typescript', 'ts', ['web/src/a.tsx', 'a.mjs', 'web/package.json', 'tsconfig.build.json'])])
+def test_each_stack_reference_gives_a_gate_paths_line_the_hook_reads(tmp_path, stack, label, edited):
+    reference = read(ROOT / 'skills' / 'setup-project' / 'references' / f'stack-{stack}.md')
+    (tmp_path / 'CLAUDE.md').write_text(reference, encoding='utf-8')
+    paths = gate_paths(str(tmp_path))
+    assert list(paths) == [label]
+    assert [f for f in edited if not matches_any(f, paths[label])] == []
 
 
 def test_every_placeholder_in_the_rules_library_is_documented_in_setup():
