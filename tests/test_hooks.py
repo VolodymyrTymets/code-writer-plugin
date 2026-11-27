@@ -918,7 +918,26 @@ def test_a_subfolder_app_is_judged_by_its_own_lockfile(tmp_path):
     blocked(repo, 'npm ci', 'ts-tooling-1', cwd=str(repo / 'web'))
     allowed_silently(repo, 'cd web && yarn install')
     allowed_silently(repo, 'npm ci')                        # the root declares nothing
-    allowed_silently(repo, 'cd / && npm install -g x')      # outside the project
+    allowed_silently(repo, 'cd / && npm ci')                # outside the project
+
+
+@pytest.mark.parametrize('command', ['cd / && npm i -g x', 'cd /tmp && npm i -g x'])
+def test_leaving_the_project_does_not_lift_the_global_install_block(tmp_path, command):
+    blocked(node_repo(tmp_path, 'npm'), command, 'ts-tooling-2')
+
+
+@pytest.mark.parametrize('command', ['npm --loglevel error ci', 'npm cit', 'npm --loglevel error install'])
+def test_an_option_value_or_alias_does_not_hide_the_wrong_manager(tmp_path, command):
+    blocked(node_repo(tmp_path, 'pnpm'), command, 'ts-tooling-1')
+
+
+@pytest.mark.parametrize('manager, command', [
+    ('npm', 'npm install --omit dev'), ('npm', 'npm install --include dev'), ('npm', 'npm install --loglevel warn'),
+    ('npm', 'npm install --install-strategy nested'), ('pnpm', 'pnpm install --reporter silent'),
+    ('pnpm', 'grep -n rm pnpm-lock.yaml'), ('pnpm', 'git commit -m "rm pnpm-lock.yaml"'),
+])
+def test_option_values_and_mentions_of_a_removal_are_left_alone(tmp_path, manager, command):
+    allowed_silently(node_repo(tmp_path, manager), command)
 
 
 @pytest.mark.parametrize('node', NODE_LOCKS)
@@ -982,6 +1001,7 @@ def test_a_question_never_hides_a_later_block(tmp_path):
     repo = node_repo(tmp_path, 'pnpm')
     (repo / 'requirements.txt').write_text('')
     blocked(repo, '.venv/bin/pip install x && npm ci', 'ts-tooling-1')
+    blocked(repo, 'pnpm add x && npm ci', 'ts-tooling-1')
     blocked(repo, 'pnpm add x && poetry install', 'py-tooling-1')
     both = guard(repo, '.venv/bin/pip install x && pnpm add y')
     assert both.code == 0 and 'pip install x' in both.out and 'pnpm add y' in both.out

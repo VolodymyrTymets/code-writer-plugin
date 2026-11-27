@@ -49,7 +49,7 @@ LOCKFILES = {'package-lock.json': 'npm', 'npm-shrinkwrap.json': 'npm', 'pnpm-loc
 # subcommands that change what is installed: 'add' may name a new package, 'sync' only installs, then remove/update
 NODE_COMMANDS = {
     'npm': {'add': 'install add i in ins inst insta instal isnt isnta isntal isntall install-test it',
-            'sync': 'ci clean-install ic install-clean isntall-clean',
+            'sync': 'ci clean-install ic install-clean isntall-clean cit install-ci-test',
             'remove': 'uninstall unlink remove rm r un', 'update': 'update u up upgrade udpate'},
     'pnpm': {'add': 'add install i', 'sync': 'ci', 'remove': 'remove rm uninstall un', 'update': 'update up upgrade'},
     'yarn': {'add': 'add', 'sync': 'install', 'remove': 'remove', 'update': 'up upgrade upgrade-interactive'},
@@ -65,7 +65,8 @@ NOT_RUNTIME = {
 FORCING = {'npm': {'--force', '-f', '--legacy-peer-deps'}, 'pnpm': {'--force'},
            'yarn': {'--force', '--ignore-engines'}, 'bun': {'--force'}}
 # flags whose value is the next word, so it is neither the subcommand nor a package name
-VALUE_FLAGS = {'--registry', '--filter', '-F', '--workspace', '--prefix', '--cwd', '--dir', '-C', '--tag'}
+VALUE_FLAGS = {'--registry', '--filter', '-F', '--workspace', '--prefix', '--cwd', '--dir', '-C', '--tag', '--loglevel',
+               '--omit', '--include', '--install-strategy', '--reporter', '--network-timeout', '--backend', '--cache'}
 
 
 def words(segment):
@@ -107,7 +108,7 @@ def node_project(start):
         try:
             with open(manifest, encoding='utf-8-sig') as fh:
                 named = str(json.load(fh).get('packageManager') or '').split('@')[0]
-        except (OSError, ValueError, AttributeError):
+        except (OSError, ValueError, AttributeError, RecursionError):
             named = ''
         if named in NODE_COMMANDS:
             return True, named
@@ -150,22 +151,23 @@ def node_command(w):
 
 
 def check_node(segment, w, cwd):
-    for i, x in enumerate(w):
-        if x in ('rm', 'del', 'unlink'):
-            for target in w[i + 1:]:
-                if os.path.basename(target) in LOCKFILES and node_project(os.path.dirname(os.path.join(cwd, target)))[0]:
-                    block('ts-tooling-3', 'deleting a lockfile.', 'never delete it — fix the dependency instead')
+    # only as the program itself (or `git rm`): `grep rm <lockfile>` deletes nothing
+    first = 2 if w[:2] == ['git', 'rm'] else 1 if w and w[0].split('/')[-1] in ('rm', 'del', 'unlink') else len(w)
+    for target in w[first:]:
+        if os.path.basename(target) in LOCKFILES and node_project(os.path.dirname(os.path.join(cwd, target)))[0]:
+            block('ts-tooling-3', 'deleting a lockfile.', 'never delete it — fix the dependency instead')
     found = node_command(w)
     if not found:
         return
     tool, kind, is_global, flags, packages = found
     here, declared_manager = node_project(cwd)
-    if not here:
-        return
     installs = kind != 'remove'
-    if is_global and installs:
+    # a global install is the same act from any folder, so `cd /tmp` first does not lift it
+    if is_global and installs and (here or node_project(session_dir)[0]):
         block('ts-tooling-2', f'"{segment}" installs globally, outside this project.',
               'add it to the project\'s devDependencies, or ask a human')
+    if not here:
+        return
     if declared_manager and tool != declared_manager and not is_global:
         block('ts-tooling-1', f'"{segment}" uses {tool}, but this repo declares {declared_manager}.',
               f'use {declared_manager} — see the command map in CLAUDE.md')
@@ -201,7 +203,7 @@ in_venv = (bool(os.environ.get('VIRTUAL_ENV'))
            or bool(re.search(r'\bactivate\b', raw)))
 
 asks = []
-cwd = str(p.get('cwd') or root)
+cwd = session_dir = str(p.get('cwd') or root)
 for c in segments(raw):
     w = words(c)
     cwd = follow_cd(w, cwd)

@@ -58,8 +58,9 @@ def declares_prettier(folder):
     try:
         if any(PRETTIER_CONFIG.fullmatch(f) for f in os.listdir(os.path.join(root, folder))):
             return True
-        return 'prettier' in json.loads(read(folder, 'package.json') or '{}')  # the key, not a dependency
-    except (OSError, ValueError, TypeError):
+        manifest = json.loads(read(folder, 'package.json') or '{}')
+        return isinstance(manifest, dict) and 'prettier' in manifest  # the key, not a dependency
+    except (OSError, ValueError, RecursionError):
         return False
 
 
@@ -69,7 +70,7 @@ def declares_biome(folder):
         text = _JSONC.sub(lambda m: m.group(1) or '', read(folder, name))
         try:
             formatter = json.loads(re.sub(r',(\s*[}\]])', r'\1', text) or '{}').get('formatter')
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, RecursionError):
             continue
         if isinstance(formatter, dict) and formatter.get('enabled') is not False:
             return True
