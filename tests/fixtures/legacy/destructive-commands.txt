@@ -1,0 +1,2 @@
+# repo-specific irreversible commands
+^\s*make\s+db-wipe\b

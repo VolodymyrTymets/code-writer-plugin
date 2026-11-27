@@ -35,7 +35,7 @@ Aim for 10–20 confirmed rules, not 60. A rule that is not real will be violate
 
 ## 4. Special things to hunt for explicitly
 
-- **No-touch zones**: generated code, vendored code, legacy modules, anything with an out-of-band process → straight into `protected-paths.md`
+- **No-touch zones**: generated code, vendored code, legacy modules, anything with an out-of-band process → straight into `protected-paths.md`, under a `### Never write` heading
 - **The real command map**, including the undocumented step everyone knows ("you must re-run the generator after touching the schema")
 - **Local environment gotchas** → `RUNBOOK.md`
 - **Decisions visible in the code** (persistence layer, state management, auth approach, repo tooling) → ADRs marked "recorded retroactively on <date>, not re-litigated"

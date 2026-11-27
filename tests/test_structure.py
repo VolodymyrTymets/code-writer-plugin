@@ -221,7 +221,7 @@ def test_rules_library_layers_budgets_and_required_stack_rules():
         n = len(read(claude_md).split('\n'))
         if n > 200:
             fails.append(f'rules/core/CLAUDE.template.md is {n} lines (budget 200)')
-    for layer in ('core', 'stack-python'):
+    for layer in ('core', 'stack-python', 'stack-typescript'):
         d = ROOT / 'rules' / layer
         if not d.exists():
             fails.append(f'rules/{layer}/ is missing')
@@ -234,7 +234,7 @@ def test_rules_library_layers_budgets_and_required_stack_rules():
             if not b:
                 warns.append(f'{where}: no frontmatter')
                 continue
-            if 'paths:' not in b and r != 'protected-paths.md':
+            if 'paths:' not in b and (layer, r) != ('core', 'protected-paths.md'):
                 warns.append(f'{where}: no paths: globs - it would load unconditionally, every session')
             lines = len(read(d / r).split('\n'))
             if lines > 130:
@@ -320,9 +320,10 @@ def test_export_sets_for_python_typescript_and_both_do_not_overlap():
             for o in stacks:
                 if o != s and re.search(rf'(?<![a-z]){o}(?![a-z])', f):
                     fails.append(f'stack-{s} manifest names stack-{o}\'s file: {f}')
-        shipped = (ROOT / 'rules' / f'stack-{s}').exists()
+        # a stack ships once its core rule file exists; its path list can land before that
+        shipped = any((ROOT / 'rules' / f'stack-{s}').glob('*-core.md'))
         for f in files:
-            if shipped and not (ROOT / f).exists():
+            if (shipped or f.endswith('/protected-paths.md')) and not (ROOT / f).exists():
                 fails.append(f'stack-{s} manifest lists {f}, which does not exist')
         # completeness: a shipped file that is not in the manifest would never be exported
         for d in (ROOT / 'rules' / f'stack-{s}', ROOT / 'templates' / f'stack-{s}'):
@@ -484,7 +485,7 @@ def glob_blocks(path) -> list:
 
 def test_protected_path_globs_reach_into_every_workspace():
     fails = []
-    for f in (ROOT / 'rules' / 'core' / 'protected-paths.md', ROOT / 'templates' / 'stack-python' / 'protected-paths.py.md'):
+    for f in sorted((ROOT / 'rules').glob('*/protected-paths.md')):
         for g in glob_blocks(f):
             bare = g[1:] if g.startswith('!') else g   # an exception needs the same reach as the rule it carves from
             if not bare.startswith('**/') and bare not in ROOT_ONLY:
@@ -496,6 +497,16 @@ def test_protected_path_globs_reach_into_every_workspace():
         fails.append('rules/core/protected-paths.md: `**/.env.*` blocks `.env.example` with no `!` exception - '
                      'that file carries no secret and cannot be written any other way')
     report(fails)
+
+
+# The one shared list was split between core and the stacks. Nothing may fall out on the way, and what a
+# Python-only repo no longer covers is written down here rather than discovered later.
+def test_splitting_the_protected_paths_dropped_no_glob():
+    before = set(glob_blocks(ROOT / 'tests' / 'fixtures' / 'legacy' / 'protected-paths.md'))
+    core, python, typescript = (set(glob_blocks(ROOT / 'rules' / layer / 'protected-paths.md'))
+                                for layer in ('core', 'stack-python', 'stack-typescript'))
+    assert before - (core | python | typescript) == set()
+    assert before - (core | python) == {'**/out/**', '**/*-lock.json', '**/*-lock.yaml'}
 
 
 # ---------------- secrets (rules G2/A6) ----------------

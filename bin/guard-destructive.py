@@ -2,7 +2,7 @@
 """Destructive and production-touching commands (rules C4, C5). PreToolUse: Bash
 
 Built-ins are ecosystem-neutral. Projects and stack packs add their own one-regex-per-line in
-.claude/rules/destructive-commands.txt (e.g. a device-copy or publish command).
+.claude/rules/destructive-commands.txt or destructive-commands.<label>.txt (e.g. a device-copy or publish command).
 """
 import re
 
@@ -14,7 +14,7 @@ if p.get('tool_name') != 'Bash':
 root = project_dir(p)
 
 SAFE_RM = re.compile(r'(dist|build|out|target|coverage|tmp|temp|\.cache|\.turbo|\.nx|node_modules|vendor|__pycache__|\.venv|\.pytest_cache|\.gradle)')
-extra = extra_command_patterns(root, 'destructive-commands.txt')
+extra = extra_command_patterns(root, 'destructive-commands')
 
 # checked on the whole command line, because segments() splits on the pipe that makes this dangerous
 raw = str((p.get('tool_input') or {}).get('command') or '')
@@ -23,9 +23,9 @@ if re.search(r'(?:curl|wget|iwr|Invoke-WebRequest)[^|]*\|\s*(?:sudo\s+)?(?:sh|ba
           'download it, read it, then run it deliberately - or install the tool from the platform package manager')
 
 for c in segments(raw):
-    for rx in extra:
+    for source, rx in extra:
         if rx.search(c):
-            block('C4', f'"{c}" matches a destructive pattern declared for this repo (.claude/rules/destructive-commands.txt).',
+            block('C4', f'"{c}" matches a destructive pattern declared for this repo (.claude/rules/{source}).',
                   'hand this command to a human, or use the reversible alternative documented in RUNBOOK.md')
 
     if re.search(r'\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\b', c) and not SAFE_RM.search(c):

@@ -48,7 +48,7 @@ Dependency manager: **{{DEPENDENCY_MANAGER}}**. Runtime pinned by **{{RUNTIME_VE
 
 - **C1** Change only what the requirement needs. No opportunistic refactors, renames, formatting sweeps or version bumps in a feature PR — propose them separately.
 - **C2** Never add a runtime dependency without explicit approval. Prefer what the repo already has.
-- **C3** Never edit generated, vendored or native build artefacts — see `.claude/rules/protected-paths.md`.
+- **C3** Never edit generated, vendored or native build artefacts — see `.claude/rules/protected-paths*.md`.
 - **C4** Never run a destructive or irreversible command (`rm -rf`, force push, deploy, publish, copying to a device or server) without explicit human confirmation in the same message.
 - **C5** Never touch production. Local and staging only, no production hosts or credentials.
 

@@ -20,10 +20,15 @@ if not targets:
     allow()
 
 lists = protected_path_lists(root)
-never, ask_list = lists['never'], lists['ask']
+
+
+def listed(rel: str, kind: str) -> bool:
+    # file by file, so one file's `!` exception cannot open a path another file protects
+    return any(matches_any(rel, f[kind]) for f in lists)
+
 
 for rel in targets:
-    if not matches_any(rel, never):
+    if not listed(rel, 'never'):
         continue
     if re.search(r'(^|/)(generated|__generated__)/|\.generated\.|\.gen\.', rel, re.I):
         why = 'change the source that generates this file, then re-run the generator from the command map'
@@ -33,7 +38,7 @@ for rel in targets:
         why = 'edit the source of truth for this file, or ask a human'
     block('C3', f'"{rel}" is a protected path (generated, vendored, secret, or immutable).', why)
 
-sensitive = [rel for rel in targets if matches_any(rel, ask_list)]
+sensitive = [rel for rel in targets if listed(rel, 'ask')]
 if sensitive:
     ask('"' + '", "'.join(sensitive) + '" is a sensitive project file (rule C3). Confirm the change and say why it is needed.')
 allow()

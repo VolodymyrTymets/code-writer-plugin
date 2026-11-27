@@ -47,10 +47,13 @@ Run each command once. If the lint command reports a backlog of existing finding
 
 Re-check the line count afterwards: `CLAUDE.md` stays under 200 lines.
 
-## Step 4 — Extend the project-owned extension points
+## Step 4 — Install the stack's guard files
 
-- (each append below only if its block is not already there) `.claude/rules/protected-paths.md` — append the entries from `templates/stack-python/protected-paths.py.md`, plus this repo's own generated or binary output (compiled UI resources, model files, stubs).
-- `.claude/rules/destructive-commands.txt` — append `templates/stack-python/destructive-commands.py.txt`, plus anything this repo can do irreversibly (copying to a device, wiping a data directory).
+Copy each only if it is not already there, and never append to `protected-paths.md` or `destructive-commands.txt`.
+A stack already installed by an earlier `/setup` (its block appended to those files) is skipped.
+
+- `rules/stack-python/protected-paths.md` to `.claude/rules/protected-paths.python.md`, plus this repo's own generated or binary output (compiled UI resources, model files, stubs) under its headings.
+- `templates/stack-python/destructive-commands.py.txt` to `.claude/rules/destructive-commands.python.txt`, plus anything this repo can do irreversibly (copying to a device, wiping a data directory).
 
 ## Step 5 — Settings and verification
 
@@ -63,16 +66,16 @@ Re-check the line count afterwards: `CLAUDE.md` stays under 200 lines.
 - [ ] Dependency manager, interpreter version, linter and test runner detected and confirmed
 - [ ] The three Python rule files installed (merged with any the repo already had)
 - [ ] Stack section appended and filled; `CLAUDE.md` still under 200 lines
-- [ ] `protected-paths.md` and `destructive-commands.txt` extended with this repo's real entries
+- [ ] `protected-paths.python.md` and `destructive-commands.python.txt` installed, with this repo's real entries
 - [ ] Every command in the map verified to run (or marked `none`)
 
 ## Export manifest
 
-Exactly these files are copied for `python`, each once. `.claude/rules/` gets the rule files, `CLAUDE.md` gets the section, the two shared files get the template blocks.
+Exactly these files are copied for `python`, each once. `.claude/rules/` gets the rule files and the two guard files under their installed names (step 4), `CLAUDE.md` gets the section.
 
 - `rules/stack-python/python-tooling.md`
 - `rules/stack-python/python-core.md`
 - `rules/stack-python/testing-python.md`
 - `rules/stack-python/CLAUDE.stack-section.md`
-- `templates/stack-python/protected-paths.py.md`
+- `rules/stack-python/protected-paths.md`
 - `templates/stack-python/destructive-commands.py.txt`

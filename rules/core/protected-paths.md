@@ -4,15 +4,17 @@ description: Paths the agent must never write to, and paths that need confirmati
 
 # Protected paths
 
-Universal starter list. **`/setup` must append this repo's real paths** — the categories below tell you what
-to look for; the specific names differ per ecosystem and per repo.
+Universal list: only what every repository has. Each stack installs its own `protected-paths.<stack>.md` beside
+this file for dependency directories, lockfiles and build output, and the hook reads all of them. **`/setup` must add
+this repo's real paths** — the categories below tell you what to look for; the specific names differ per ecosystem and
+per repo.
 
 Every glob here is `**/`-prefixed unless the file it names can only exist at the repository root. A monorepo
 is the normal case, not the exception: build output, lockfiles and generated code live under `apps/*`,
 `packages/*` and `services/*`, and a rule written as `dist/**` protects nothing there. `**/` spans whole path
 segments, so `**/dist/**` still covers a root-level `dist/` and does not touch `src/mydist/`.
 
-A line starting with `!` is an **exception**: it wins wherever it sits in the list. `**/.env.*` would
+A line starting with `!` is an **exception**: it wins wherever it sits in the lists of its own file. `**/.env.*` would
 otherwise cover `.env.example`, which holds no values and is the one file that records which variables a
 service needs — a feature that adds a config variable has to update it. Add an exception whenever a pattern
 here catches a file that carries no secret and is not generated. (The `!` entries in
@@ -45,20 +47,11 @@ Categories to hunt for during setup:
 **/id_rsa*
 **/*credentials*.json
 **/*service-account*.json
-**/dist/**
-**/build/**
-**/out/**
 **/target/**
-**/coverage/**
-**/tmp/**
-**/.cache/**
 **/*.generated.*
 **/*.gen.*
 **/generated/**
 **/__generated__/**
-**/*.lock
-**/*-lock.json
-**/*-lock.yaml
 ```
 
 ## Ask first (hook asks for confirmation)
@@ -75,5 +68,6 @@ Categories to hunt for during setup:
 
 ## Project additions
 
-<!-- /setup appends this repo's dependency dirs, generated paths, platform build folders and
-     no-touch legacy areas here, discovered from the repo itself. Keep each line a glob. -->
+<!-- /setup adds this repo's dependency dirs, generated paths, platform build folders and
+     no-touch legacy areas here, discovered from the repo itself. Put each glob in a fenced block under a
+     `### Never write` or `### Ask first` heading: that heading decides how the hook treats it. -->

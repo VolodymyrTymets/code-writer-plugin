@@ -37,7 +37,7 @@ Then, inside the repository:
 with the permission deny list, `.mcp.json`, the `docs/` skeleton, a PR template and the CI agent checks. Review and
 merge it before starting feature work — until then the hooks have no command map to read.
 
-`/setup` asks the stack first and installs only what you answer: **Python** gets the Python layer, **TypeScript** the TypeScript layer (its rule files are not shipped yet, so today the answer is only recorded), **Both** each layer once. The answer is one line in `CLAUDE.md`, `Stacks: python, typescript`, which a re-run reads. Your answer wins over what `/setup` detects.
+`/setup` asks the stack first and installs only what you answer: **Python** gets the Python layer, **TypeScript** the TypeScript layer (only its protected-paths list ships today; its rule files are not written yet), **Both** each layer once. The answer is one line in `CLAUDE.md`, `Stacks: python, typescript`, which a re-run reads. Your answer wins over what `/setup` detects.
 
 To make the plugin install for everyone who opens the repo, `/setup` also writes this into `.claude/settings.json`:
 
@@ -90,7 +90,7 @@ Every block names a rule ID and the allowed alternative. The common ones:
 | **B4** — plan not approved | A plan exists for the branch's ticket without an `Approved-by:` line | Get a human decision and add the line (above). No ticket in the branch or no plan file means the gate stays silent |
 | **B1** — definition of done | You are stopping with code changed but no lint / tests / execution recorded | Run the commands the message quotes from your command map, **each on its own line**. `make test \| tail`, `make lint \|\| true` and `make test ; echo done` do not count — the exit code is not the tool's. After two blocks the gate hands control back to you |
 | **C3** — protected path | Secrets, lockfiles, build output, generated code — also when written through the shell (`>`, `sed -i`, `cp`) or an MCP tool | Edit the source of truth instead. Pipeline and agent-config files ask for confirmation rather than block |
-| **C4 / C5** — destructive command | `rm -rf` outside build dirs, publish/deploy, infrastructure CLIs, anything aimed at a production host | Run it yourself if it is really intended. Repo-specific patterns live in `destructive-commands.txt` below |
+| **C4 / C5** — destructive command | `rm -rf` outside build dirs, publish/deploy, infrastructure CLIs, anything aimed at a production host | Run it yourself if it is really intended. Repo-specific patterns live in the `destructive-commands*.txt` files below |
 | **A1–A4** — git | Commit/push on a protected branch, plain `--force`, `--no-verify`, amending pushed commits, merging or approving a PR | Branch first; use `--force-with-lease`; merging stays a human action |
 | **py-tooling-1…3** — dependencies | A different installer than the repo declares, `pip install` outside a venv, `--break-system-packages`, deleting a lock or requirements file | Use the declared manager, install through `.venv/bin/pip` or an activated venv, change the declaration instead of deleting it. A new runtime dependency asks for confirmation |
 
@@ -115,8 +115,14 @@ Two more files extend the guards per repo:
 
 | File | Purpose | Written by |
 |------|---------|------------|
-| `.claude/rules/protected-paths.md` | Never-write and ask-first globs. `!` lines carve exceptions (e.g. `.env.example`) | `/setup` — universal categories plus this repo's generated, vendored and platform paths |
+| `.claude/rules/protected-paths.md` | Never-write and ask-first globs every repo has: secrets, generated code, CI and container files | `/setup` — plus this repo's generated, vendored and platform paths |
+| `.claude/rules/protected-paths.<stack>.md` | The same for one stack: dependency directories, lockfiles, build output | `/setup`, one per chosen stack |
 | `.claude/rules/destructive-commands.txt` | One regex per line of irreversible commands specific to this repo, blocked as C4 | `/setup` seeds it |
+| `.claude/rules/destructive-commands.<stack>.txt` | The same for one stack | `/setup`, for a stack that ships one |
+
+The guards read every file of each kind. In a protected-paths file, a fenced block counts under the latest
+`Never write` or `Ask first` heading, and a `!` line carves an exception (e.g. `.env.example`) from its own file only.
+With `Stacks: none` nothing covers lockfiles or build output until you add them.
 
 ### The Python layer
 

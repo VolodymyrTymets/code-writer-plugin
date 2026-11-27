@@ -2,7 +2,7 @@
 
 Step 4.5 of `/setup` for a repo whose `Stacks:` line contains `typescript`. Same bootstrap PR, no second command.
 
-**Status:** the rule files below are written in T3. Until `rules/stack-typescript/` exists in the plugin, skip steps 2 to 4 for this stack (still detect, fill the core placeholders and the command map, and add the settings entries), keep `typescript` in the `Stacks:` line, and say in the PR that the TypeScript rules are not shipped yet. Never write them by hand into the repo from memory.
+**Status:** the rule files and the stack section are written in T3. Until `rules/stack-typescript/ts-core.md` exists in the plugin, skip steps 2 and 3 (still detect, fill the core placeholders and the command map, run step 4 and add the settings entries), keep `typescript` in the `Stacks:` line, and say in the PR that the TypeScript rules are not shipped yet. Never write them by hand into the repo from memory.
 
 ## Step 1 — Detect, then confirm in one line
 
@@ -17,7 +17,7 @@ Report one line, for example: *"pnpm, Node 20, tsc strict, eslint, vitest"*. Ask
 
 ## Step 2 — Install the rule files
 
-Copy the files of the manifest below from `rules/stack-typescript/` into `.claude/rules/`. If the repo already has hand-written TypeScript rules there, **merge, never overwrite**.
+Copy `ts-tooling.md`, `ts-core.md` and `testing-ts.md` from `rules/stack-typescript/` into `.claude/rules/`. Not `protected-paths.md`: step 4 installs it under its own name. If the repo already has hand-written TypeScript rules there, **merge, never overwrite**.
 
 ## Step 3 — Append the stack section and fill the placeholders
 
@@ -33,9 +33,12 @@ Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the
 
 A type check is a `| typecheck | ... |` row in the command map and a B1 gate. Run each command once. Record the count of existing findings in the cell when lint has a backlog (rule C1).
 
-## Step 4 — Extend the project-owned extension points
+## Step 4 — Install the stack's guard files
 
-Append the entries of `templates/stack-typescript/protected-paths.ts.md` to `.claude/rules/protected-paths.md` and `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.txt`, under a comment naming the stack. If the repo also has another stack, never write the same block twice.
+Copy each only if it is not already there, and never append to `protected-paths.md` or `destructive-commands.txt`.
+
+- `rules/stack-typescript/protected-paths.md` to `.claude/rules/protected-paths.typescript.md`, plus this repo's own generated output under its headings.
+- `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.typescript.txt`. It ships with T3; skip it until the file exists.
 
 ## Step 5 — Settings and verification
 
@@ -43,11 +46,11 @@ Add this stack's install, lint and test commands to `allow` and `ask` in `.claud
 
 ## Export manifest
 
-Exactly these files are copied for `typescript`, each once. They are created by T3; this list is the contract T3 must keep or update.
+Exactly these files are copied for `typescript`, each once. `protected-paths.md` ships now (step 4 installs it as `protected-paths.typescript.md`) and the rest are created by T3; this list is the contract T3 must keep or update.
 
 - `rules/stack-typescript/ts-tooling.md`
 - `rules/stack-typescript/ts-core.md`
 - `rules/stack-typescript/testing-ts.md`
 - `rules/stack-typescript/CLAUDE.stack-section.md`
-- `templates/stack-typescript/protected-paths.ts.md`
+- `rules/stack-typescript/protected-paths.md`
 - `templates/stack-typescript/destructive-commands.ts.txt`
