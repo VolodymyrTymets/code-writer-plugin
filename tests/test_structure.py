@@ -46,7 +46,8 @@ PLANNED_OK_IN = ['README.md', 'CHANGELOG.md']
 
 CORE_HOOKS = ['session-context.py', 'guard-git.py', 'guard-destructive.py', 'guard-protected-paths.py',
               'guard-plan-approval.py', 'record-activity.py', 'verify-dod.py', os.path.join('lib', 'util.py')]
-STACK_HOOKS = ['guard-dependency-manager.py', 'format-changed.py']
+# every stack hook is tagged with the stacks it serves
+STACK_HOOKS = {'guard-dependency-manager.py': ['python', 'typescript'], 'format-changed.py': ['python', 'typescript']}
 # every stack layer must stay complete or /setup cannot install it
 REQUIRED_STACK_RULES = {
     'stack-python': ['python-tooling.md', 'python-core.md', 'testing-python.md', 'CLAUDE.stack-section.md'],
@@ -414,7 +415,7 @@ def test_hooks_json_is_wired_to_scripts_that_exist():
     for s in sorted(wired):
         if not (ROOT / 'bin' / s).exists():
             fails.append(f'hooks.json references missing bin/{s}')
-    for s in [h for h in CORE_HOOKS + STACK_HOOKS if 'lib' not in h]:
+    for s in [h for h in CORE_HOOKS + list(STACK_HOOKS) if 'lib' not in h]:
         if s not in wired:
             warns.append(f'bin/{s} exists but is not wired in hooks.json')
     # The definition-of-done gate only sees a failed command if the plugin subscribes to failures at all.
@@ -422,6 +423,19 @@ def test_hooks_json_is_wired_to_scripts_that_exist():
         fails.append('hooks.json has no PostToolUseFailure block: a command that exits non-zero never reaches record-activity, '
                      'so nothing can retire a stale verification')
     report(fails, warns)
+
+
+def test_every_stack_hook_is_tagged_wired_and_its_rule_ids_are_cited():
+    wired = set(re.findall(r'bin/([\w-]+\.py)', json.dumps(HOOKS)))
+    assert wired == {h for h in CORE_HOOKS if 'lib' not in h} | set(STACK_HOOKS), 'tag a new hook as core or by its stacks'
+    for hook, stacks in STACK_HOOKS.items():
+        assert stacks and set(stacks) <= set(known_stacks()), f'{hook}: unknown stack in {stacks}'
+    guard = read(ROOT / 'bin' / 'guard-dependency-manager.py')
+    for prefix, layer, name in (('py', 'stack-python', 'python-tooling.md'), ('ts', 'stack-typescript', 'ts-tooling.md')):
+        emitted = set(re.findall(rf"'({prefix}-tooling-\d)'", guard))
+        assert emitted, prefix
+        rules = read(ROOT / 'rules' / layer / name)
+        assert not [i for i in sorted(emitted) if i not in rules], f'{name} does not cite every ID of {sorted(emitted)}'
 
 
 # A hook that reads a payload field Claude Code does not send fails silently and forever, and a test

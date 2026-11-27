@@ -3,7 +3,7 @@
 A Claude Code plugin that gives a Python or TypeScript repository one spec-driven workflow (plan → human approval → gate →
 implement → self-review → draft PR), a verification-first definition of done, reviewer subagents, and hooks that
 mechanically block the mistakes a prompt alone does not prevent. Python and TypeScript layers add rules for tooling,
-code and tests; the Python layer also has a dependency-manager guard and an opt-in formatter.
+code and tests, and a dependency-manager guard and an opt-in formatter cover both.
 
 Maintaining the plugin itself? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -93,6 +93,7 @@ Every block names a rule ID and the allowed alternative. The common ones:
 | **C4 / C5** — destructive command | `rm -rf` outside build dirs, publish/deploy, infrastructure CLIs, anything aimed at a production host | Run it yourself if it is really intended. Repo-specific patterns live in the `destructive-commands*.txt` files below |
 | **A1–A4** — git | Commit/push on a protected branch, plain `--force`, `--no-verify`, amending pushed commits, merging or approving a PR | Branch first; use `--force-with-lease`; merging stays a human action |
 | **py-tooling-1…3** — dependencies | A different installer than the repo declares, `pip install` outside a venv, `--break-system-packages`, deleting a lock or requirements file | Use the declared manager, install through `.venv/bin/pip` or an activated venv, change the declaration instead of deleting it. A new runtime dependency asks for confirmation |
+| **ts-tooling-1…3** — dependencies | A different Node manager than the repo declares, `--force`, `--legacy-peer-deps`, `--ignore-engines`, a global install, deleting a lockfile | Use the declared manager, add the tool to `devDependencies`, fix the conflict the install reports. A new runtime dependency asks for confirmation |
 
 Protected branches default to `main master develop staging release`; set `CODE_WRITER_PROTECTED_BRANCHES=a,b,c` to change them.
 
@@ -137,7 +138,8 @@ path is touched:
 
 Two hooks belong to the layer: `guard-dependency-manager` (pip, uv, poetry or pipenv — whichever the repo declares)
 and `format-changed`, which runs `ruff format` on an edited `.py` file **only** when the repo declares a `[format]`
-section. A repo that never formatted its code is left alone, so a one-line fix stays a one-line diff.
+section. A repo that never formatted its code is left alone, so a one-line fix stays a one-line diff. Both hooks also
+serve TypeScript (below).
 
 ### The TypeScript layer
 
@@ -151,8 +153,17 @@ section. A repo that never formatted its code is left alone, so a one-line fix s
 
 `ts-react.md`, `ts-nestjs.md` and `ts-react-native.md` are added only when a `package.json` lists `react`,
 `@nestjs/core` or `react-native`. `destructive-commands.typescript.txt` blocks registry changes, release tools,
-over-the-air updates and commands that drop database contents. The layer has no hooks yet: nothing mechanically blocks
-the wrong package manager.
+over-the-air updates and commands that drop database contents.
+
+The same two hooks serve this layer, each command judged only by its own ecosystem:
+
+- `guard-dependency-manager` takes the manager (npm, pnpm, yarn, bun) from `packageManager`, otherwise from the lockfile,
+  in the command's folder or a parent (`cd web && …` is followed). It applies wherever there is a `package.json` or a
+  Node lockfile, whatever the `Stacks:` line says. Lockfiles of two managers and no `packageManager` means no
+  wrong-manager block. Directory flags (`--prefix`, `-C`, `--dir`, `--cwd`) are not followed.
+- `format-changed` formats an edited `.ts`, `.tsx`, `.mts` or `.cts` file with prettier (a config file or a `prettier`
+  key in `package.json`) or biome (a `formatter` block in `biome.json` or `biome.jsonc`), only from
+  `node_modules/.bin`. Both declared, neither declared or not installed means nothing happens.
 
 In a repo with both stacks the command map has labelled rows such as `lint (ts)`. **Running either `lint` row, or
 either test row, satisfies the definition-of-done gate**, so run both.

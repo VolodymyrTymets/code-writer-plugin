@@ -9,6 +9,7 @@ Format: **Deleted** first — a smaller plugin each release is the goal.
 after the ask-first list now ask for confirmation. No file needs to change.
 
 ### Deleted
+- **Python-only stack hooks**: both now serve TypeScript too.
 - **The "TypeScript rules not shipped yet" path in `/setup`**: choosing TypeScript now installs a layer.
 - **Appending stack entries to shared files**: `/setup` no longer appends to `protected-paths.md` or
   `destructive-commands.txt`. `templates/stack-python/protected-paths.py.md` moved to
@@ -27,6 +28,11 @@ after the ask-first list now ask for confirmation. No file needs to change.
 - The `build-validator` agent (typecheck and build runner); `test-runner` and `code-reviewer` remain.
 
 ### Changed
+- **Repos with a `package.json` or Node lockfile get stricter**, set up or not: `guard-dependency-manager` blocks another
+  Node manager (`ts-tooling-1`), forced and global installs (`ts-tooling-2`) and lockfile deletion (`ts-tooling-3`),
+  and asks before a new runtime dependency. A confirmation question no longer stops later commands on the same line
+  from being checked.
+- `format-changed` also formats `.ts`, `.tsx`, `.mts` and `.cts` files where the repo declares prettier or biome.
 - Each stack installs `protected-paths.<stack>.md` and `destructive-commands.<stack>.txt`, and the guards read every
   such file. A `!` exception applies within its own file. The C4 message names the file that matched.
 - `rules/stack-typescript/protected-paths.md` is new.

@@ -855,6 +855,232 @@ def test_the_formatter_reformats_only_when_the_repo_declares_ruff_as_its_formatt
             'declared formatter must run' if formats else 'no [format] section means no reformatting'
 
 
+# ---------------- stack layer: Node managers ----------------
+
+NODE_LOCKS = {'npm': 'package-lock.json', 'pnpm': 'pnpm-lock.yaml', 'yarn': 'yarn.lock', 'bun': 'bun.lock'}
+NODE_ADD = {'npm': 'npm install', 'pnpm': 'pnpm add', 'yarn': 'yarn add', 'bun': 'bun add'}
+NODE_SYNC = {'npm': 'npm ci', 'pnpm': 'pnpm install --frozen-lockfile', 'yarn': 'yarn --immutable', 'bun': 'bun install'}
+
+
+def node_repo(path, manager=None, package='{"name": "t"}', folder='.'):
+    d = path / folder
+    d.mkdir(parents=True, exist_ok=True)
+    (d / 'package.json').write_text(package)
+    if manager:
+        (d / NODE_LOCKS[manager]).write_text('')
+    return path
+
+
+def guard(repo, command, **payload):
+    return run_in(repo, 'guard-dependency-manager.py', {**bash(command), **payload}, {})
+
+
+def allowed_silently(repo, command):
+    r = guard(repo, command)
+    assert (r.code, r.out) == (0, ''), f'{command}: {r.code} {r.out} {r.err}'
+
+
+def blocked(repo, command, rule, **payload):
+    r = guard(repo, command, **payload)
+    assert r.code == 2 and rule in r.err, f'{command}: {r.code} {r.out} {r.err}'
+
+
+@pytest.mark.parametrize('manager', NODE_LOCKS)
+def test_a_node_repo_allows_its_own_manager_and_blocks_the_others(tmp_path, manager):
+    repo = node_repo(tmp_path, manager)
+    allowed_silently(repo, NODE_SYNC[manager])
+    for other in NODE_LOCKS:
+        if other == manager:
+            continue
+        for command in (NODE_SYNC[other], f'{NODE_ADD[other]} lodash', f'{other} remove lodash', f'CI=1 sudo corepack {NODE_ADD[other]} x'):
+            blocked(repo, command, 'ts-tooling-1')
+
+
+def test_package_manager_field_wins_over_the_lockfile(tmp_path):
+    repo = node_repo(tmp_path, 'npm', '{"packageManager": "pnpm@9.1.0"}')
+    allowed_silently(repo, 'pnpm install')
+    blocked(repo, 'npm ci', 'ts-tooling-1')
+
+
+@pytest.mark.parametrize('locks', [(), ('package-lock.json', 'yarn.lock')])
+def test_an_undeclared_node_manager_is_not_guessed(tmp_path, locks):
+    repo = node_repo(tmp_path)
+    for lock in locks:
+        (repo / lock).write_text('')
+    for command in ('npm ci', 'yarn install', 'pnpm install'):
+        allowed_silently(repo, command)
+
+
+def test_a_subfolder_app_is_judged_by_its_own_lockfile(tmp_path):
+    repo = node_repo(tmp_path, 'yarn', folder='web')
+    for command in ('cd web && npm ci', '(cd web && npm ci)', 'cd ./web; pnpm install'):
+        blocked(repo, command, 'ts-tooling-1')
+    blocked(repo, 'npm ci', 'ts-tooling-1', cwd=str(repo / 'web'))
+    allowed_silently(repo, 'cd web && yarn install')
+    allowed_silently(repo, 'npm ci')                        # the root declares nothing
+    allowed_silently(repo, 'cd / && npm ci')                # outside the project
+
+
+@pytest.mark.parametrize('command', ['cd / && npm i -g x', 'cd /tmp && npm i -g x'])
+def test_leaving_the_project_does_not_lift_the_global_install_block(tmp_path, command):
+    blocked(node_repo(tmp_path, 'npm'), command, 'ts-tooling-2')
+
+
+@pytest.mark.parametrize('command', ['npm --loglevel error ci', 'npm cit', 'npm --loglevel error install'])
+def test_an_option_value_or_alias_does_not_hide_the_wrong_manager(tmp_path, command):
+    blocked(node_repo(tmp_path, 'pnpm'), command, 'ts-tooling-1')
+
+
+@pytest.mark.parametrize('manager, command', [
+    ('npm', 'npm install --omit dev'), ('npm', 'npm install --include dev'), ('npm', 'npm install --loglevel warn'),
+    ('npm', 'npm install --install-strategy nested'), ('pnpm', 'pnpm install --reporter silent'),
+    ('pnpm', 'grep -n rm pnpm-lock.yaml'), ('pnpm', 'git commit -m "rm pnpm-lock.yaml"'),
+])
+def test_option_values_and_mentions_of_a_removal_are_left_alone(tmp_path, manager, command):
+    allowed_silently(node_repo(tmp_path, manager), command)
+
+
+@pytest.mark.parametrize('node', NODE_LOCKS)
+@pytest.mark.parametrize('python, lock', [('uv', 'uv.lock'), ('pip', 'requirements.txt')])
+def test_a_both_repo_judges_each_command_by_its_own_ecosystem(tmp_path, node, python, lock):
+    repo = node_repo(tmp_path, node)
+    (repo / lock).write_text('')
+    py = 'uv sync' if python == 'uv' else '.venv/bin/pip install -r requirements.txt'
+    for command in (py, NODE_SYNC[node], f'{py} && {NODE_SYNC[node]}', f'{NODE_SYNC[node]} && {py}'):
+        allowed_silently(repo, command)
+    other_node = 'npm ci' if node != 'npm' else 'yarn install'
+    blocked(repo, f'{py} && {other_node}', 'ts-tooling-1')
+    blocked(repo, f'{NODE_SYNC[node]} && poetry install', 'py-tooling-1')
+
+
+@pytest.mark.parametrize('manager, command', [
+    ('npm', 'npm install --force'), ('npm', 'npm ci -f'), ('npm', 'npm i --legacy-peer-deps'),
+    ('pnpm', 'pnpm install --force'), ('yarn', 'yarn --ignore-engines'), ('yarn', 'yarn add x --force'),
+    ('bun', 'bun install --force'), ('npm', 'npm i -g x'), ('npm', 'npm install --location=global x'),
+    ('pnpm', 'pnpm add --global x'), ('yarn', 'yarn global add x'), ('bun', 'bun add -g x'), ('pnpm', 'npm i -g pnpm'),
+])
+def test_forced_and_global_node_installs_are_blocked(tmp_path, manager, command):
+    blocked(node_repo(tmp_path, manager), command, 'ts-tooling-2')
+
+
+@pytest.mark.parametrize('command', ['rm package-lock.json', 'rm -f npm-shrinkwrap.json', 'unlink pnpm-lock.yaml',
+                                     'git rm yarn.lock', 'del bun.lock', 'rm "bun.lockb"', 'cd web && rm yarn.lock',
+                                     'rm web/yarn.lock'])
+def test_deleting_a_node_lockfile_is_blocked(tmp_path, command):
+    blocked(node_repo(node_repo(tmp_path), folder='web'), command, 'ts-tooling-3')
+
+
+@pytest.mark.parametrize('manager, command', [
+    ('npm', 'npm install lodash'), ('npm', 'npm i -P lodash'), ('pnpm', 'pnpm add lodash'), ('pnpm', 'pnpm -r add lodash'),
+    ('pnpm', 'pnpm add -P lodash'), ('yarn', 'yarn add lodash'), ('yarn', 'yarn workspace web add lodash'),
+    ('bun', 'bun add lodash'),
+])
+def test_a_node_runtime_dependency_asks_first(tmp_path, manager, command):
+    r = guard(node_repo(tmp_path, manager), command)
+    assert r.code == 0 and '"permissionDecision":"ask"' in r.out and 'C2' in r.out, f'{r.code} {r.out} {r.err}'
+
+
+@pytest.mark.parametrize('manager, command', [
+    ('npm', 'npm install -D x'), ('npm', 'npm install --save-peer x'), ('npm', 'npm install --registry https://r.example'),
+    ('npm', 'npm install 2>&1 > log.txt'), ('npm', 'npm install .  # local'), ('pnpm', 'pnpm add -D x'),
+    ('pnpm', 'pnpm --filter web install'), ('yarn', 'yarn add -P x'), ('yarn', 'yarn add --dev x'), ('bun', 'bun add -d x'),
+    ('npm', 'npm run build'), ('npm', 'npx x'), ('pnpm', 'pnpm dlx x'), ('npm', 'npm view x'), ('yarn', 'yarn build'),
+    ('pnpm', 'pnpm build'), ('bun', 'bun run x'), ('yarn', 'yarn --version'), ('npm', 'npm uninstall x'),
+    ('npm', 'echo npm install -g x'),
+])
+def test_node_commands_that_are_left_alone(tmp_path, manager, command):
+    allowed_silently(node_repo(tmp_path, manager), command)
+
+
+@pytest.mark.parametrize('command', ['npm i -g x', 'rm yarn.lock', 'npm install lodash'])
+def test_a_repo_without_node_files_gets_no_node_check(command):
+    allowed_silently(UV_REPO, command)
+
+
+def test_a_question_never_hides_a_later_block(tmp_path):
+    repo = node_repo(tmp_path, 'pnpm')
+    (repo / 'requirements.txt').write_text('')
+    blocked(repo, '.venv/bin/pip install x && npm ci', 'ts-tooling-1')
+    blocked(repo, 'pnpm add x && npm ci', 'ts-tooling-1')
+    blocked(repo, 'pnpm add x && poetry install', 'py-tooling-1')
+    both = guard(repo, '.venv/bin/pip install x && pnpm add y')
+    assert both.code == 0 and 'pip install x' in both.out and 'pnpm add y' in both.out
+
+
+# ---------------- stack layer: TypeScript formatter ----------------
+
+def stub_formatter(repo, tool, folder='.'):
+    """A fake local install that records the arguments it was given."""
+    b = repo / folder / 'node_modules' / '.bin'
+    b.mkdir(parents=True, exist_ok=True)
+    (b / tool).write_text(f'#!/bin/sh\necho "{tool} $*" >> "{repo}/calls.log"\n')
+    (b / tool).chmod(0o755)
+
+
+def formatted_with(repo, file):
+    (repo / file).parent.mkdir(parents=True, exist_ok=True)
+    (repo / file).write_text('const a = 1\n')
+    r = run_in(repo, 'format-changed.py', {'tool_name': 'Write', 'tool_input': {'file_path': file}})
+    assert (r.code, r.out) == (0, ''), r.err
+    log = repo / 'calls.log'
+    calls = log.read_text() if log.exists() else ''
+    log.unlink(missing_ok=True)
+    return calls
+
+
+def formatter_repo(repo, files):
+    for name, text in files.items():
+        (repo / name).parent.mkdir(parents=True, exist_ok=True)
+        (repo / name).write_text(text)
+    stub_formatter(repo, 'prettier')
+    stub_formatter(repo, 'biome')
+    return repo
+
+
+BIOME_ON = '{"formatter": {"indentStyle": "space"}}'
+BIOME_COMMENTED = '// c\n{\n  "$schema": "https://x/y.json", /* c */\n  "formatter": {"enabled": true,},\n}\n'
+
+
+# WHY: the stubs are shell scripts; on Windows the hook looks for the .cmd shims instead.
+@pytest.mark.skipif(os.name == 'nt', reason='POSIX stub executables')
+@pytest.mark.parametrize('files, expected', [
+    ({'.prettierrc': '{}'}, 'prettier --write'),
+    ({'prettier.config.mjs': ''}, 'prettier --write'),
+    ({'package.json': '{"prettier": {"semi": false}}'}, 'prettier --write'),
+    ({'biome.json': BIOME_ON}, 'biome format --write'),
+    ({'biome.jsonc': BIOME_COMMENTED}, 'biome format --write'),
+    ({'package.json': '{"devDependencies": {"prettier": "^3"}}'}, None),
+    ({'biome.json': '{"linter": {"enabled": true}}'}, None),
+    ({'biome.json': '{"formatter": {"enabled": false}}'}, None),
+    ({'.prettierrc': '{}', 'biome.json': BIOME_ON}, None),
+    ({}, None),
+])
+def test_typescript_is_formatted_only_with_the_declared_formatter(tmp_path, files, expected):
+    repo = formatter_repo(tmp_path, files)
+    for file in ('src/a.ts', 'src/a.tsx', 'a.mts', 'a.cts'):
+        calls = formatted_with(repo, file)
+        if expected:
+            assert calls.startswith(expected) and calls.strip().endswith(file), calls
+        else:
+            assert calls == '', calls
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='POSIX stub executables')
+def test_the_nearest_declaration_in_a_monorepo_decides(tmp_path):
+    repo = formatter_repo(tmp_path, {'.prettierrc': '{}', 'apps/web/biome.json': BIOME_ON})
+    assert formatted_with(repo, 'apps/web/src/a.ts').startswith('biome')
+    assert formatted_with(repo, 'apps/api/a.ts').startswith('prettier')
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='POSIX stub executables')
+def test_other_files_and_a_missing_binary_run_no_node_formatter(tmp_path):
+    repo = formatter_repo(tmp_path, {'.prettierrc': '{}', 'ruff.toml': ''})
+    for file in ('a.py', 'a.js', 'README.md', 'node_modules/x/a.ts', 'dist/a.ts'):
+        assert formatted_with(repo, file) == '', file
+    shutil.rmtree(repo / 'node_modules')
+    assert formatted_with(repo, 'a.ts') == ''
+
+
 # ---------------- plan approval gate (both directions) ----------------
 
 def test_an_unapproved_plan_blocks_writes_to_code():
