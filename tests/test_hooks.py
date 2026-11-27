@@ -604,7 +604,8 @@ def test_a_parenthesised_name_that_is_no_declared_label_stays_an_ordinary_row(tm
 
 def test_gate_paths_lines_are_read_as_written_and_unfilled_ones_are_ignored(tmp_path):
     (tmp_path / 'CLAUDE.md').write_text(
-        '- Gate paths (TS): `**/*.{ts,tsx}` `**/package.json`\nGate paths (py): `{{PY_PATHS}}`\nGate paths (go):\n')
+        '- Gate paths (TS): `**/*.{ts,tsx}` `**/package.json`\nGate paths (py): ` {{PY_PATHS}}`\nGate paths (go):\n'
+        '    Gate paths (rb): `**/*.rb`\n')
     assert util.gate_paths(str(tmp_path)) == {'ts': ['**/*.{ts,tsx}', '**/package.json']}
 
 
@@ -642,6 +643,14 @@ def test_only_the_most_specific_matching_row_is_recorded(tmp_path):
 
 def test_a_mapped_command_shorter_than_four_characters_still_records_its_row(tmp_path):
     assert rows_after(tmp_path, '| typecheck (ts) | `tsc` |\n', ran('tsc')) == ['typecheck (ts)']
+
+
+@pytest.mark.parametrize('rows', ['null', '[]'])
+def test_a_state_file_with_unusable_rows_still_records(tmp_path, rows):
+    state = tmp_path / '.claude' / '.state'
+    state.mkdir(parents=True)
+    (state / 'session-rows.json').write_text(f'{{"rows": {rows}}}', encoding='utf-8')
+    assert rows_after(tmp_path, TWO_STACKS, ran('make lint-py')) == ['lint']
 
 
 def test_a_state_file_written_before_rows_existed_still_loads(tmp_path):

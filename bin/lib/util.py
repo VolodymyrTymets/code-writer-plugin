@@ -443,7 +443,7 @@ def command_map(root: str) -> dict:
     return out
 
 
-_GATE_PATHS = re.compile(r'^[ \t]*(?:[-*][ \t]+)?gate paths \(([\w-]+)\):(.*)$', re.I | re.M)
+_GATE_PATHS = re.compile(r'^(?:[-*][ \t]+)?gate paths \(([\w-]+)\):(.*)$', re.I | re.M)
 
 
 def gate_paths(root: str) -> dict:
@@ -454,7 +454,7 @@ def gate_paths(root: str) -> dict:
     """
     out: dict = {}
     for label, rest in _GATE_PATHS.findall(read_text(os.path.join(root, 'CLAUDE.md'))):
-        globs = [g.strip() for g in re.findall(r'`([^`]+)`', rest) if not g.startswith('{{')]
+        globs = [g.strip() for g in re.findall(r'`([^`]+)`', rest) if '{{' not in g]
         if globs:
             out.setdefault(label.lower(), []).extend(globs)
     return out
@@ -514,6 +514,8 @@ def load_state(root: str, session_id) -> dict:
         return _empty_state()
     for key, default in _empty_state().items():
         state.setdefault(key, default)
+    if not isinstance(state['rows'], dict):
+        state['rows'] = {}
     return state
 
 

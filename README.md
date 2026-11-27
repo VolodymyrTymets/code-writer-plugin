@@ -179,6 +179,7 @@ names each one still to run:
 - a row `<task> (label)` belongs to the label with the same name; a stack with no row of its own is held to the plain row;
 - run the command as the map writes it. A form that drops one of its words, or a command not in the map, counts for no row;
 - an `e2e` run does not stand in for a test row that is split by stack;
+- a failed command that is not in the map but reads as a check (`npm run test:watch`) retires every row of that kind;
 - a file that matches no line (a CI file, a `Makefile`) adds no demand;
 - without `Gate paths` lines, **running either row satisfies the gate**. A repo set up earlier gets the lines by
   re-running `/setup`.
