@@ -553,7 +553,15 @@ def ts_destructive_repo(tmp_path):
     'npx prisma migrate reset', 'npx prisma db push --force-reset', 'prisma db push --accept-data-loss',
     'npx typeorm schema:drop -d src/ds.ts', 'npx typeorm-ts-node-esm -d src/ds.ts schema:drop',
     'npx sequelize db:drop', 'npx sequelize-cli db:migrate:undo:all', 'npx drizzle-kit push --force',
-    'npx knex migrate:rollback --all'])
+    'npx knex migrate:rollback --all',
+    # aliases and other ways of running the same thing
+    'npm dist-tags add pkg@1.0.0 latest', 'npm dist-tag set pkg@1 beta', 'npm dist-tag remove pkg beta',
+    'npm author add someone pkg', 'npm owner remove someone pkg', 'npm --otp 123456 unpublish pkg@1.0.0',
+    'pnpm unpublish pkg', 'pnpm deprecate pkg@1 "old"', 'npx eas-cli update --branch production',
+    'npx eas-cli@latest update --auto', 'eas update:republish --group abc', 'pnpm dlx @changesets/cli publish',
+    './node_modules/.bin/semantic-release', 'npm exec semantic-release', 'bun x semantic-release',
+    'npx -p semantic-release semantic-release', 'npx semantic-release --dry-run=false',
+    'dotenv -e .env -- prisma migrate reset', 'docker compose exec api npx prisma migrate reset'])
 def test_typescript_patterns_block_and_name_their_file(tmp_path, command):
     r = run_in(ts_destructive_repo(tmp_path), 'guard-destructive.py', bash(command))
     assert r.code == 2
@@ -564,7 +572,11 @@ def test_typescript_patterns_block_and_name_their_file(tmp_path, command):
     'npm test', 'npm install release-it', 'npm install -D semantic-release', 'npm rm lodash', 'npm uninstall lodash',
     'npm view x dist-tags', 'npm dist-tag ls pkg', 'npm owner ls pkg', 'npx semantic-release --dry-run',
     'npx semantic-release -d', 'npx release-it --dry-run', 'npx prisma migrate dev', 'npx prisma db push',
-    'npx drizzle-kit push', 'npx knex migrate:rollback', 'npx sequelize db:migrate:undo', 'eas update --help'])
+    'npx drizzle-kit push', 'npx knex migrate:rollback', 'npx sequelize db:migrate:undo', 'eas update --help',
+    'grep -rn "prisma migrate reset" docs/', 'rg "eas update" README.md', 'git log --grep "knex migrate:rollback --all"',
+    'git commit -m "docs: explain why prisma migrate reset is blocked"', 'echo npm unpublish pkg',
+    'npm install deprecate', 'eas update:list', 'eas update:view abc', 'npx release-it -d',
+    'npx release-it --changelog', 'npx release-it --release-version'])
 def test_typescript_patterns_leave_everyday_commands_alone(tmp_path, command):
     assert run_in(ts_destructive_repo(tmp_path), 'guard-destructive.py', bash(command)).code == 0
 

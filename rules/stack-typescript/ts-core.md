@@ -3,6 +3,8 @@ description: TypeScript code rules - no any, validation at boundaries, narrowing
 paths:
   - "**/*.ts"
   - "**/*.tsx"
+  - "**/*.mts"
+  - "**/*.cts"
 ---
 
 # TypeScript code rules

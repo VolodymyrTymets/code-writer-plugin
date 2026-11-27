@@ -71,10 +71,11 @@ Any placeholder left unfilled is a bug: the agent will read it literally. `grep 
 
 For each stack in the `Stacks:` line, follow its reference: @references/stack-python.md or @references/stack-typescript.md. Each reference ends with an `## Export manifest`; copy exactly those files, each one once per repo (an already-installed stack is skipped, see step 1.5), and no file of a stack that was not chosen. `Stacks: none` skips this step.
 
-In a repo with two stacks, `{{DEPENDENCY_MANAGER}}`, `{{RUNTIME_VERSION*}}` and `{{CMD_INSTALL}}` hold one entry per stack, labelled (`uv (py), pnpm (ts)`), so T3 allows each stack's own manager and not a second one for the same stack.
+In a repo with two stacks, `{{DEPENDENCY_MANAGER}}` and `{{RUNTIME_VERSION*}}` hold one entry per stack, labelled (`uv (py), pnpm (ts)`), so T3 allows each stack's own manager and not a second one for the same stack. `{{CMD_INSTALL}}` and the other `{{CMD_*}}` rows hold the first stack's command only, one command per cell; the second stack's goes in its own labelled row, below.
 
 **Command map with two stacks.** The hooks key rows by task name, so a repeated name silently replaces the earlier row. When both stacks have a task, the first keeps the plain name and the second gets a label: `install (ts)`, `lint (ts)`, `unit tests (ts)`, `affected tests (ts)`, `build (ts)` (or `(py)` when Python comes second). Never label with the full stack name: it contains `types`, which the hooks read as a type check. A task only one stack has, typically `typecheck`, keeps its plain name. Do not join two commands with `&&`: the hooks never record a joined command. Tell the human the limit: running either labelled lint or test row satisfies the definition-of-done gate, so run both.
- Each stack installs its own `protected-paths.<stack>.md` and `destructive-commands.<stack>.txt`; never append a stack's entries to `protected-paths.md` or `destructive-commands.txt`. A repo set up before these per-stack files keeps its appended block: the hooks still read it.
+
+Each stack installs its own `protected-paths.<stack>.md` and `destructive-commands.<stack>.txt`; never append a stack's entries to `protected-paths.md` or `destructive-commands.txt`. A repo set up before these per-stack files keeps its appended block: the hooks still read it.
 
 Python: detect the tooling as in @references/stack-python.md, install the manifest's rule files (merged with any the repo already has, never overwritten), append the filled stack section, and install `protected-paths.python.md` and `destructive-commands.python.txt`.
 

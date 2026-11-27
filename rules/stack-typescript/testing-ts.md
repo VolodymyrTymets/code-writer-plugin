@@ -9,6 +9,8 @@ paths:
   - "**/__tests__/**/*.tsx"
   - "**/tests/**/*.ts"
   - "**/tests/**/*.tsx"
+  - "**/*.e2e-spec.ts"
+  - "**/test/**/*.ts"
   - "**/vitest.config.*"
   - "**/jest.config.*"
 ---

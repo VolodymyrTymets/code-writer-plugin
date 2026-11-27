@@ -27,7 +27,7 @@ Copy a file of `## Optional files` into `.claude/rules/` only when a `package.js
 
 ## Step 3 — Append the stack section and fill the placeholders
 
-Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Its rule IDs are `TS1`–`TS3`, so they sit beside another stack's section. In a repo with two stacks the command map follows step 4.5 of `/setup`: labelled rows such as `lint (ts)`.
+Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Its rule IDs are `TS1`–`TS3`, so they sit beside another stack's section. In a repo with two stacks the command map follows step 4.5 of `/setup`: labelled rows such as `lint (ts)`. On a re-run that adds TypeScript to a repo already set up, the placeholders are filled with the other stack's values: leave those rows as they are, add the labelled rows, and extend the `Dependency manager:` line.
 
 | Placeholder | Typical value |
 |-------------|---------------|
@@ -44,7 +44,7 @@ A type check is a `| typecheck | ... |` row in the command map and a B1 gate. Ru
 Copy each only if it is not already there, and never append to `protected-paths.md` or `destructive-commands.txt`.
 
 - `rules/stack-typescript/protected-paths.md` to `.claude/rules/protected-paths.typescript.md`, plus this repo's own generated output under its headings.
-- `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.typescript.txt`., plus anything this repo can do irreversibly (a seed script that wipes data, a store or registry upload).
+- `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.typescript.txt`, plus anything this repo can do irreversibly (a seed script that wipes data, a store or registry upload).
 
 ## Step 5 — Settings and verification
 

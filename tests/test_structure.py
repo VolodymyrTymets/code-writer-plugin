@@ -258,8 +258,8 @@ def rule_globs(path) -> list:
 def test_typescript_rule_paths_reach_typescript_files_and_no_python_file():
     layer = ROOT / 'rules' / 'stack-typescript'
     expected = {'ts-tooling.md': ['package.json', 'apps/web/tsconfig.build.json', 'pnpm-lock.yaml'],
-                'ts-core.md': ['a.ts', 'apps/web/src/a.tsx'],
-                'testing-ts.md': ['a.test.ts', 'apps/web/src/a.spec.tsx', 'packages/ui/__tests__/a.ts']}
+                'ts-core.md': ['a.ts', 'apps/web/src/a.tsx', 'scripts/a.mts', 'a.cts'],
+                'testing-ts.md': ['a.test.ts', 'apps/web/src/a.spec.tsx', 'packages/ui/__tests__/a.ts', 'test/app.e2e-spec.ts']}
     for name, paths in expected.items():
         globs = rule_globs(layer / name)
         for p in paths:
