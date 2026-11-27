@@ -429,7 +429,7 @@ def test_export_sets_for_python_typescript_and_both_do_not_overlap():
 
 # Lines every session pays for in a freshly set-up repo: CLAUDE.md, the docs it imports and the rule files without
 # `paths:`. A line is what `wc -l` counts. Raising this is a decision to make in review, not a way to get green.
-CONTEXT_CEILING = 340
+CONTEXT_CEILING = 250
 
 
 def context_counter():
