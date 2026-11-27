@@ -39,6 +39,8 @@ Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the
 
 A type check is a `| typecheck | ... |` row in the command map and a B1 gate. Run each command once. Record the count of existing findings in the cell when lint has a backlog (rule C1).
 
+Two plugin hooks apply with nothing to install: the dependency guard (`ts-tooling-1..3`) follows `packageManager` or the lockfile, and the formatter hook runs prettier or biome only where the repo declares one and has it in `node_modules`. If two managers' lockfiles sit together with no `packageManager`, the guard cannot tell which is right: report it.
+
 ## Step 4 — Install the stack's guard files
 
 Copy each only if it is not already there, and never append to `protected-paths.md` or `destructive-commands.txt`.

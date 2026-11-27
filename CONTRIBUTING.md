@@ -61,8 +61,9 @@ claude plugin validate ./ --strict      # expect exactly one warning: the root C
 ```
 
 Fixtures on purpose: the core fixture's command map is driven through `make`, so a core hook that secretly depends
-on one ecosystem's tooling fails the suite; the pip and uv fixtures exercise the two Python hooks and prove the
-dependency guard follows whichever manager the repo declares. The formatter test is skipped on a machine without `ruff`.
+on one ecosystem's tooling fails the suite; the pip and uv fixtures, the Node repos (one per lockfile) and the
+Both repos exercise the two stack hooks and prove the dependency guard follows whichever manager the repo declares.
+The Node formatter tests use stub binaries; the ruff test is skipped on a machine without `ruff`.
 
 The structure guard checks what review keeps missing: each stack layer is complete and path-scoped, every `{{PLACEHOLDER}}` in
 `rules/` is documented in `/setup`, no skill has a nested subdirectory, no hook names a payload field Claude Code does
@@ -100,7 +101,9 @@ stacks need is listed in both, so removing one stack's file leaves the other's p
 ## The `Stacks:` line
 
 `/setup` asks which stack a repo uses and records the answer as one line in the repo's `CLAUDE.md`. Every later
-`/setup` re-run reads it, and the stack hooks will read it too, so the format is a contract:
+`/setup` re-run reads it, so the format is a contract. The stack hooks do not read it: they are switched by the repo's
+own manifests and lockfiles, and each hook is tagged with its stacks in `STACK_HOOKS` (`tests/test_structure.py`).
+Their rule IDs are cited in the stack's tooling rule file.
 
 - Shape: `Stacks: python, typescript`, matched by `^Stacks:\s*(.+)$`. Plain text: no bold, no backticks.
 - Values: the names of the stacks `/setup` knows, lowercase, comma separated. A stack is known when

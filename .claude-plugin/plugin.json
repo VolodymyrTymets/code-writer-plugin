@@ -1,7 +1,7 @@
 {
   "name": "code-writer",
   "version": "0.2.0",
-  "description": "Claude Code config for Python and TypeScript projects. Constitution, spec-driven workflow skills with gates (plan, analyze, implement, review), verification-first definition of done, reviewer subagents, and mechanical hooks that read the repo's own command map. Python layer: tooling, code and testing rules, a dependency-manager guard and an opt-in ruff formatter. TypeScript layer: tooling, code, testing and optional framework rules and destructive-command patterns.",
+  "description": "Claude Code config for Python and TypeScript projects. Constitution, spec-driven workflow skills with gates (plan, analyze, implement, review), verification-first definition of done, reviewer subagents, and mechanical hooks that read the repo's own command map. Python layer: tooling, code and testing rules. TypeScript layer: tooling, code, testing and optional framework rules and destructive-command patterns. Both have a dependency-manager guard and an opt-in formatter.",
   "author": {
     "name": "Volodymyr Tymets"
   },
