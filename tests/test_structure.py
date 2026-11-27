@@ -357,6 +357,25 @@ def export_manifest(stack: str) -> list:
     return re.findall(r'^- `([^`]+)`', m.group(1), re.M) if m else []
 
 
+def optional_files(stack: str) -> list:
+    """(path, dependency) pairs of a reference's `## Optional files` section: copied only for a repo that has it."""
+    text = read(ROOT / 'skills' / 'setup-project' / 'references' / f'stack-{stack}.md')
+    m = re.search(r'^## Optional files\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+    return re.findall(r'^- `([^`]+)` — `([^`]+)`$', m.group(1), re.M) if m else []
+
+
+def test_optional_framework_files_exist_name_a_dependency_and_stay_out_of_the_core_files():
+    optional = optional_files('typescript')
+    assert [dep for _, dep in optional] == ['react', '@nestjs/core', 'react-native']
+    manifest = export_manifest('typescript')
+    for path, _ in optional:
+        assert (ROOT / path).exists(), path
+        assert path not in manifest, f'{path} would be copied into every repo'
+        assert len(read(ROOT / path).split('\n')) <= 50, path
+    for name in REQUIRED_STACK_RULES['stack-typescript']:
+        assert not re.search(r'react|nestjs', read(ROOT / 'rules' / 'stack-typescript' / name), re.I), name
+
+
 def test_export_sets_for_python_typescript_and_both_do_not_overlap():
     fails = []
     stacks = known_stacks()
@@ -379,7 +398,7 @@ def test_export_sets_for_python_typescript_and_both_do_not_overlap():
         for d in (ROOT / 'rules' / f'stack-{s}', ROOT / 'templates' / f'stack-{s}'):
             if d.exists():
                 for p in sorted(d.iterdir()):
-                    if not p.name.startswith('.') and rel(p) not in files:
+                    if not p.name.startswith('.') and rel(p) not in files + [o for o, _ in optional_files(s)]:
                         fails.append(f'{rel(p)} exists but is not in the stack-{s} manifest, so /setup would never copy it')
     both = [f for files in sets.values() for f in files]
     if len(both) != len(set(both)):

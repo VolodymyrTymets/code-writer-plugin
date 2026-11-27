@@ -17,6 +17,14 @@ Report one line, for example: *"pnpm, Node 20, tsc strict, eslint, vitest"*. Ask
 
 Copy `ts-tooling.md`, `ts-core.md` and `testing-ts.md` from `rules/stack-typescript/` into `.claude/rules/`. Not `protected-paths.md`: step 4 installs it under its own name. If the repo already has hand-written TypeScript rules there, **merge, never overwrite**.
 
+### Framework files, only if the repo uses the framework
+
+```bash
+find . -name package.json -not -path '*/node_modules/*' -exec grep -HnE '"(react|react-native|@nestjs/core)"[[:space:]]*:' {} +
+```
+
+Copy a file of `## Optional files` into `.claude/rules/` only when a `package.json` found this way lists its dependency; no match means no file. A React Native app lists `react` too, so it gets both. In a monorepo, narrow each file's `paths:` to the apps that list the dependency (`apps/web/**/*.tsx`), so mobile rules do not load for web code.
+
 ## Step 3 — Append the stack section and fill the placeholders
 
 Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Its rule IDs are `TS1`–`TS3`, so they sit beside another stack's section. In a repo with two stacks the command map follows step 4.5 of `/setup`: labelled rows such as `lint (ts)`.
@@ -45,6 +53,7 @@ Add this stack's install, lint and test commands to `allow` and `ask` in `.claud
 ## Definition of done (folded into setup-project's own list)
 - [ ] Package manager, runtime version, compiler, linter and test runner detected and confirmed
 - [ ] The three TypeScript rule files installed (merged with any the repo already had)
+- [ ] Framework files installed only for the frameworks the repo lists, `paths:` narrowed in a monorepo
 - [ ] Stack section appended; `typecheck` row added if the repo type-checks; `CLAUDE.md` still under 200 lines
 - [ ] `protected-paths.typescript.md` and `destructive-commands.typescript.txt` installed, with this repo's real entries
 - [ ] Every command in the map verified to run (or marked `none`)
@@ -59,3 +68,11 @@ Exactly these files are copied for `typescript`, each once. `.claude/rules/` get
 - `rules/stack-typescript/CLAUDE.stack-section.md`
 - `rules/stack-typescript/protected-paths.md`
 - `templates/stack-typescript/destructive-commands.ts.txt`
+
+## Optional files
+
+Copied only when a `package.json` in the repo lists the dependency after the dash (step 2).
+
+- `rules/stack-typescript/ts-react.md` — `react`
+- `rules/stack-typescript/ts-nestjs.md` — `@nestjs/core`
+- `rules/stack-typescript/ts-react-native.md` — `react-native`
