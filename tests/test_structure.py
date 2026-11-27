@@ -495,10 +495,12 @@ EXPORTS = [[s] for s in known_stacks()] + [known_stacks()]
 def test_every_export_stays_under_the_context_ceiling(tmp_path, stacks):
     total, counted = context_budget(ROOT, stacks, tmp_path)
     # a counter that silently counts nothing would pass any ceiling
-    assert {'templates/ARCHITECTURE.md', 'templates/RUNBOOK.md'} <= set(counted)
-    # the hook reads the list itself, so no session has to carry it
-    assert 'rules/core/protected-paths.md' in build_export(ROOT, stacks, tmp_path).values()
-    assert 'rules/core/protected-paths.md' not in counted
+    imported = ('AGENT_TOOLING', 'ARCHITECTURE', 'BUSINESS_MODEL', 'DOMAIN_GLOSSARY')
+    assert {f'templates/{doc}.md' for doc in imported} <= set(counted)
+    # installed, but no session carries them: the hook reads the list itself, CLAUDE.md only points at the runbook
+    on_demand = {'rules/core/protected-paths.md', 'templates/RUNBOOK.md'}
+    assert on_demand <= set(build_export(ROOT, stacks, tmp_path).values())
+    assert not on_demand & set(counted)
     failure = budget_failure(stacks, total, counted)
     assert not failure, failure
 
