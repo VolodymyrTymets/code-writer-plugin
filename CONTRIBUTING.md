@@ -85,7 +85,7 @@ doubles the stack rules, so most of them must cost nothing until needed.
 |------------|-----------------------|---------------------------|
 | `CLAUDE.md` and its stack sections | every session, in full | paid always: keep each stack section to about 8 lines and the file under 200 |
 | files `CLAUDE.md` imports with `@path` | every session, in full | paid always: an import organises, it does not save |
-| rule files without `paths:` | every session | paid always: allowed only for the universal file |
+| rule files without `paths:` | every session | paid always: no rule file the plugin ships is one |
 | rule files with `paths:` | only after Claude reads or edits a matching file | paid on demand: TypeScript rules do not load while editing `.py` files |
 | hooks (`bin/*.py`) | run outside the model; only their messages enter: a block message, and the session briefing | small |
 | skills | the description is always listed, the body loads when invoked | small: do not add skills per stack |
@@ -96,13 +96,14 @@ The loading behaviour is Claude Code's, described at <https://code.claude.com/do
 every `.claude/rules/**/*.md` without `paths:`. Lines are raw lines as `wc -l` counts them, comments and frontmatter
 included. `tests/test_structure.py` builds the Python, TypeScript and Both exports from `rules/` and `templates/`,
 counts them with `bin/context-cost.py` and fails any above `CONTEXT_CEILING`, listing each counted file. The `docs/`
-templates count too, because the constitution imports them. The ceiling covers what the plugin ships, not what `/setup`
+templates the constitution imports count too; `RUNBOOK.md` is only pointed at, so it does not. The ceiling covers what the plugin ships, not what `/setup`
 or the repo adds later (labelled command rows, filled docs). Raise it only on purpose, in a PR that says why.
 `/setup` runs the same script on the repo it set up and reports the result.
 
 Rules of thumb:
 
-1. A stack rule file without `paths:` is a bug. The structure test fails it; only core `protected-paths.md` is exempt.
+1. A rule file without `paths:` is a bug. The structure test fails a stack one and warns on a core one. Core
+   `protected-paths.md` is scoped to the lists themselves: the hook reads the file, so no session has to carry it.
 2. Prefer a lint rule or a hook over a prompt rule. A hook costs no context until it speaks.
 3. Never export a stack the user did not choose. An unused rule is not free.
 4. Put framework guidance in optional files, installed only when the framework is present.
