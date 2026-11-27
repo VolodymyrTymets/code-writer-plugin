@@ -17,7 +17,7 @@ Report one line, for example: *"pnpm, Node 20, tsc strict, eslint, vitest"*. Ask
 
 ## Step 2 — Install the rule files
 
-Copy the files of the manifest below from `rules/stack-typescript/` into `.claude/rules/`. If the repo already has hand-written TypeScript rules there, **merge, never overwrite**.
+Copy `ts-tooling.md`, `ts-core.md` and `testing-ts.md` from `rules/stack-typescript/` into `.claude/rules/`. Not `protected-paths.md`: step 4 installs it under its own name. If the repo already has hand-written TypeScript rules there, **merge, never overwrite**.
 
 ## Step 3 — Append the stack section and fill the placeholders
 
@@ -46,7 +46,7 @@ Add this stack's install, lint and test commands to `allow` and `ask` in `.claud
 
 ## Export manifest
 
-Exactly these files are copied for `typescript`, each once. `protected-paths.md` ships now and the rest are created by T3; this list is the contract T3 must keep or update.
+Exactly these files are copied for `typescript`, each once. `protected-paths.md` ships now (step 4 installs it as `protected-paths.typescript.md`) and the rest are created by T3; this list is the contract T3 must keep or update.
 
 - `rules/stack-typescript/ts-tooling.md`
 - `rules/stack-typescript/ts-core.md`

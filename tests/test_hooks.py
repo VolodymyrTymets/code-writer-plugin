@@ -352,7 +352,7 @@ def test_guard_protected_paths_allows_source_and_asks_on_pipeline_files():
 def rules_repo(tmp_path, files: dict):
     (tmp_path / '.claude' / 'rules').mkdir(parents=True)
     for name, text in files.items():
-        (tmp_path / '.claude' / 'rules' / name).write_text(text)
+        (tmp_path / '.claude' / 'rules' / name).write_text(text, encoding='utf-8')
     return tmp_path
 
 
@@ -422,6 +422,31 @@ def test_every_destructive_commands_file_is_read_and_the_message_names_it(tmp_pa
     new = run_in(repo, 'guard-destructive.py', bash('make flash'))
     assert new.code == 2
     assert '(.claude/rules/destructive-commands.extra.txt).' in new.err
+
+
+def break_a_rule_file(rules, kind, name):
+    if kind == 'directory':
+        (rules / name).mkdir()
+    elif kind == 'dangling link':
+        (rules / name).symlink_to(rules / 'nowhere')
+    else:
+        (rules / name).write_bytes(b'# caf\xe9\n')
+
+
+# A hook that crashes exits 1, which Claude Code does not treat as a block.
+@pytest.mark.parametrize('kind', ['directory', 'dangling link', 'not utf-8'])
+def test_a_bad_extra_rule_file_does_not_switch_a_guard_off(tmp_path, kind):
+    repo = rules_repo(tmp_path, {'protected-paths.md': lists_md(never=['**/.env'])})
+    rules = repo / '.claude' / 'rules'
+    break_a_rule_file(rules, kind, 'protected-paths.old.md')
+    break_a_rule_file(rules, kind, 'destructive-commands.old.txt')
+    assert decision(repo, '.env') == 'block'
+    assert run_in(repo, 'guard-destructive.py', bash('git clean -fdx')).code == 2
+
+
+def test_a_byte_order_mark_does_not_hide_the_first_block(tmp_path):
+    repo = rules_repo(tmp_path, {'protected-paths.md': '\ufeff```\n**/a\n```\n'})
+    assert decision(repo, 'a') == 'block'
 
 
 # ---------------- per-stack protected paths (C3) ----------------

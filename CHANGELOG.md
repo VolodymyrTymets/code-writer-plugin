@@ -29,7 +29,7 @@ after the ask-first list now ask for confirmation. No file needs to change.
 - Each stack installs `protected-paths.<stack>.md` and `destructive-commands.<stack>.txt`, and the guards read every
   such file. A `!` exception applies within its own file. The C4 message names the file that matched.
 - `rules/stack-typescript/protected-paths.md` is new.
-- `/setup` asks first which stack the repo uses (TypeScript, Python or Both), detecting from `pyproject.toml`, `requirements*.txt`, `package.json` and `tsconfig.json`, and records `Stacks: python, typescript` in `CLAUDE.md`. Only the chosen stacks' files are copied, each once. Repos set up earlier get the line inferred and inserted on a re-run. `references/stack-typescript.md` is added; the TypeScript rule files themselves follow later, so choosing TypeScript records the line and installs nothing yet.
+- `/setup` asks first which stack the repo uses (TypeScript, Python or Both), detecting from `pyproject.toml`, `requirements*.txt`, `package.json` and `tsconfig.json`, and records `Stacks: python, typescript` in `CLAUDE.md`. Only the chosen stacks' files are copied, each once. Repos set up earlier get the line inferred and inserted on a re-run. `references/stack-typescript.md` is added; the TypeScript rule files themselves follow later, so choosing TypeScript records the line and installs only its protected-paths list.
 - Renamed to `code-writer`, version 0.2.0. Install with `claude plugin install code-writer@code-writer`; existing
   users must reinstall and change `rln-agent@rln` in their `enabledPlugins`. Hook messages are prefixed `[code-writer]`
   and the plan gate is `code-writer:plan-gate`. The description now says Python and TypeScript projects.

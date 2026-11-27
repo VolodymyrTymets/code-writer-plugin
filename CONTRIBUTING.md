@@ -94,7 +94,7 @@ Each writer owns its own file in the target repo's `.claude/rules/`, so no two a
 
 The hooks read exactly those name shapes; `protected-paths-notes.md` is ignored. Protected-path blocks are sorted by
 the latest `Never write` / `Ask first` heading (blocks above the first one: by position), and a `!` exception applies
-within its file. A repo with no protected-paths file gets every list under `rules/` as a fallback. A glob that two
+within its file. Put each fence on its own line. A repo with no protected-paths file gets every list under `rules/` as a fallback. A glob that two
 stacks need is listed in both, so removing one stack's file leaves the other's protection whole.
 
 ## The `Stacks:` line

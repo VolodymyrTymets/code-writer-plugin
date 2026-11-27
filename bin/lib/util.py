@@ -209,12 +209,19 @@ def rule_files(root: str, stem: str, ext: str) -> list:
         found = sorted(os.listdir(folder))
     except OSError:
         return []
-    return [os.path.join(folder, f) for f in found if name.fullmatch(f)]
+    paths = [os.path.join(folder, f) for f in found if name.fullmatch(f)]
+    return [p for p in paths if os.path.isfile(p)]  # not a directory or a dangling link
 
 
 def read_text(path: str) -> str:
-    with open(path, encoding='utf-8') as fh:
-        return fh.read()
+    """A rule file's text. It never raises: a guard that crashes blocks nothing, so one bad file must not
+    take the other files and the built-in checks down with it.
+    """
+    try:
+        with open(path, encoding='utf-8-sig', errors='replace') as fh:
+            return fh.read()
+    except OSError:
+        return ''
 
 
 def parse_path_lists(md: str) -> dict:
