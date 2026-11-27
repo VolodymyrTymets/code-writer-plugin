@@ -2,8 +2,6 @@
 
 Step 4.5 of `/setup` for a repo whose `Stacks:` line contains `typescript`. Same bootstrap PR, no second command.
 
-**Status:** the rule files and the stack section are written in T3. Until `rules/stack-typescript/ts-core.md` exists in the plugin, skip steps 2 and 3 (still detect, fill the core placeholders and the command map, run step 4 and add the settings entries), keep `typescript` in the `Stacks:` line, and say in the PR that the TypeScript rules are not shipped yet. Never write them by hand into the repo from memory.
-
 ## Step 1 — Detect, then confirm in one line
 
 ```bash
@@ -19,9 +17,17 @@ Report one line, for example: *"pnpm, Node 20, tsc strict, eslint, vitest"*. Ask
 
 Copy `ts-tooling.md`, `ts-core.md` and `testing-ts.md` from `rules/stack-typescript/` into `.claude/rules/`. Not `protected-paths.md`: step 4 installs it under its own name. If the repo already has hand-written TypeScript rules there, **merge, never overwrite**.
 
+### Framework files, only if the repo uses the framework
+
+```bash
+find . -name package.json -not -path '*/node_modules/*' -exec grep -HnE '"(react|react-native|@nestjs/core)"[[:space:]]*:' {} +
+```
+
+Copy a file of `## Optional files` into `.claude/rules/` only when a `package.json` found this way lists its dependency; no match means no file. A React Native app lists `react` too, so it gets both. In a monorepo, narrow each file's `paths:` to the apps that list the dependency (`apps/web/**/*.tsx`), so mobile rules do not load for web code.
+
 ## Step 3 — Append the stack section and fill the placeholders
 
-Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Rule IDs must not collide with another stack's section in a repo with two stacks (T3 decides the prefixes).
+Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Its rule IDs are `TS1`–`TS3`, so they sit beside another stack's section. In a repo with two stacks the command map follows step 4.5 of `/setup`: labelled rows such as `lint (ts)`. On a re-run that adds TypeScript to a repo already set up, the placeholders are filled with the other stack's values: leave those rows as they are, add the labelled rows, and extend the `Dependency manager:` line.
 
 | Placeholder | Typical value |
 |-------------|---------------|
@@ -38,15 +44,23 @@ A type check is a `| typecheck | ... |` row in the command map and a B1 gate. Ru
 Copy each only if it is not already there, and never append to `protected-paths.md` or `destructive-commands.txt`.
 
 - `rules/stack-typescript/protected-paths.md` to `.claude/rules/protected-paths.typescript.md`, plus this repo's own generated output under its headings.
-- `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.typescript.txt`. It ships with T3; skip it until the file exists.
+- `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.typescript.txt`, plus anything this repo can do irreversibly (a seed script that wipes data, a store or registry upload).
 
 ## Step 5 — Settings and verification
 
 Add this stack's install, lint and test commands to `allow` and `ask` in `.claude/settings.json`. Do not touch `permissions.deny`. `grep -r '{{' CLAUDE.md .claude/` returns nothing. Run every command in the map.
 
+## Definition of done (folded into setup-project's own list)
+- [ ] Package manager, runtime version, compiler, linter and test runner detected and confirmed
+- [ ] The three TypeScript rule files installed (merged with any the repo already had)
+- [ ] Framework files installed only for the frameworks the repo lists, `paths:` narrowed in a monorepo
+- [ ] Stack section appended; `typecheck` row added if the repo type-checks; `CLAUDE.md` still under 200 lines
+- [ ] `protected-paths.typescript.md` and `destructive-commands.typescript.txt` installed, with this repo's real entries
+- [ ] Every command in the map verified to run (or marked `none`)
+
 ## Export manifest
 
-Exactly these files are copied for `typescript`, each once. `protected-paths.md` ships now (step 4 installs it as `protected-paths.typescript.md`) and the rest are created by T3; this list is the contract T3 must keep or update.
+Exactly these files are copied for `typescript`, each once. `.claude/rules/` gets the rule files and the two guard files under their installed names (step 4), `CLAUDE.md` gets the section.
 
 - `rules/stack-typescript/ts-tooling.md`
 - `rules/stack-typescript/ts-core.md`
@@ -54,3 +68,11 @@ Exactly these files are copied for `typescript`, each once. `protected-paths.md`
 - `rules/stack-typescript/CLAUDE.stack-section.md`
 - `rules/stack-typescript/protected-paths.md`
 - `templates/stack-typescript/destructive-commands.ts.txt`
+
+## Optional files
+
+Copied only when a `package.json` in the repo lists the dependency after the dash (step 2).
+
+- `rules/stack-typescript/ts-react.md` — `react`
+- `rules/stack-typescript/ts-nestjs.md` — `@nestjs/core`
+- `rules/stack-typescript/ts-react-native.md` — `react-native`

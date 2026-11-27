@@ -1,0 +1,19 @@
+# Installed by /setup (step 4.5) as .claude/rules/destructive-commands.typescript.txt. One regex per line.
+# Core already blocks `publish`, `deploy`, `submit`, `release` and `promote` as a command or subcommand.
+# The leading lookahead skips searches, prints and git, which only mention a command.
+# registry changes that other people see, including the aliases npm accepts
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\b(npm|pnpm)(\s+--?[\w-]+(=\S+|\s+(\d+|\S+://\S+))?)*\s+(unpublish|deprecate)(?![\w-])
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\b(npm|pnpm)(\s+--?[\w-]+(=\S+|\s+(\d+|\S+://\S+))?)*\s+dist-tags?\s+(add|a|set|s|rm|r|del|d|remove)(?![\w-])
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\b(npm|pnpm)(\s+--?[\w-]+(=\S+|\s+(\d+|\S+://\S+))?)*\s+(owner|author)\s+(add|rm|remove)(?![\w-])
+# release tools that publish
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*(?<![\w-])(changeset|@changesets/cli(@\S+)?)\s+publish\b
+^(\w+=\S+\s+)*(sudo\s+)?((npx|bunx)\s+((-y|--yes|(-p|--package)(=|\s+)\S+)\s+)*|npm\s+(exec|x)\s+(--\s+)?|pnpm\s+((exec|dlx)\s+)?|yarn\s+((exec|dlx)\s+)?|bun\s+x\s+)?(\S*/)?semantic-release(@\S+)?(?![\w-])(?!.*\s(--dry-run|-d|--help|-h|--version)(=true)?(\s|$))
+^(\w+=\S+\s+)*(sudo\s+)?((npx|bunx)\s+((-y|--yes|(-p|--package)(=|\s+)\S+)\s+)*|npm\s+(exec|x)\s+(--\s+)?|pnpm\s+((exec|dlx)\s+)?|yarn\s+((exec|dlx)\s+)?|bun\s+x\s+)?(\S*/)?release-it(@\S+)?(?![\w-])(?!.*\s(--dry-run|-d|--help|-h|--version|--changelog|--release-version)(=true)?(\s|$))
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*(?<![\w-])eas(-cli(@\S+)?)?\s+update(?!:(list|view|insights)\b)(?![\w-])(?!.*\s(--help|-h)(=true)?(\s|$))
+# commands that drop or rewrite database contents
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\bprisma(@\S+)?\s+migrate\s+reset\b
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\bprisma(@\S+)?\s+db\s+push\b.*--(force-reset|accept-data-loss)\b
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\btypeorm\S*\s+(.*\s)?schema:drop\b
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\bsequelize(-cli)?\s+(.*\s)?db:(drop|migrate:undo:all)\b
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\bdrizzle-kit\s+push\b.*--force\b
+^(?!(\w+=\S+\s+)*(git|gh|cat|less|head|tail|grep|egrep|rg|ag|ls|find|wc|echo|printf|open|code|man)\b).*\bknex\s+(.*\s)?migrate:rollback\b.*--all\b

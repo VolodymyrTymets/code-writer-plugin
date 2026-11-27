@@ -500,6 +500,87 @@ def test_a_repo_that_is_not_set_up_falls_back_to_every_list_in_the_library(tmp_p
     assert decision(tmp_path, path) == expected
 
 
+# ---------------- a command map with two stacks (B1) ----------------
+
+TWO_STACKS = """| Task | Command |
+|------|---------|
+| typecheck | `make types-ts` |
+| lint | `make lint-py` |
+| lint (ts) | `make lint-ts` |
+| unit tests | `make test-py` |
+| unit tests (ts) | `make test-ts` |
+"""
+
+
+def two_stack_stop(tmp_path, session, *commands):
+    (tmp_path / 'CLAUDE.md').write_text(TWO_STACKS)
+    run_in(tmp_path, 'record-activity.py', {'session_id': session, **wrote(str(tmp_path / 'src' / 'a.ts'))})
+    for c in commands:
+        run_in(tmp_path, 'record-activity.py', {'session_id': session, **ran(c)})
+    return run_in(tmp_path, 'verify-dod.py', {'session_id': session})
+
+
+# The known limit, written down: one stack's run satisfies the gate for both until the hooks learn stacks.
+def test_a_labelled_row_satisfies_the_gate_of_its_plain_row(tmp_path):
+    r = two_stack_stop(tmp_path, 's1', 'make types-ts', 'make lint-ts', 'make test-ts')
+    assert 'lint  →' not in r.err and 'make test-py' not in r.err
+
+
+def test_running_neither_labelled_row_blocks_and_quotes_the_plain_one(tmp_path):
+    r = two_stack_stop(tmp_path, 's2', 'make types-ts')
+    assert r.code == 2
+    assert 'make lint-py' in r.err and 'make test-py' in r.err and 'make lint-ts' not in r.err
+
+
+def test_a_typecheck_only_one_stack_has_keeps_its_plain_row_and_is_required(tmp_path):
+    r = two_stack_stop(tmp_path, 's3', 'make lint-ts', 'make test-ts')
+    assert r.code == 2
+    assert 'make types-ts' in r.err
+
+
+# ---------------- TypeScript destructive commands (C4) ----------------
+
+def ts_destructive_repo(tmp_path):
+    template = PLUGIN / 'templates' / 'stack-typescript' / 'destructive-commands.ts.txt'
+    return rules_repo(tmp_path, {'destructive-commands.typescript.txt': template.read_text(encoding='utf-8')})
+
+
+@pytest.mark.parametrize('command', [
+    'npm unpublish pkg@1.0.0', 'npm deprecate pkg@1.x "old"', 'npm dist-tag add pkg@1.0.0 latest',
+    'npm dist-tag rm pkg beta', 'npm owner add someone pkg', 'npm owner rm someone pkg',
+    'npx changeset publish', 'pnpm exec changeset publish', 'npx semantic-release', 'CI=true pnpm semantic-release',
+    'yarn dlx release-it', 'release-it patch', 'eas update --branch main --message x',
+    'npx prisma migrate reset', 'npx prisma db push --force-reset', 'prisma db push --accept-data-loss',
+    'npx typeorm schema:drop -d src/ds.ts', 'npx typeorm-ts-node-esm -d src/ds.ts schema:drop',
+    'npx sequelize db:drop', 'npx sequelize-cli db:migrate:undo:all', 'npx drizzle-kit push --force',
+    'npx knex migrate:rollback --all',
+    # aliases and other ways of running the same thing
+    'npm dist-tags add pkg@1.0.0 latest', 'npm dist-tag set pkg@1 beta', 'npm dist-tag remove pkg beta',
+    'npm author add someone pkg', 'npm owner remove someone pkg', 'npm --otp 123456 unpublish pkg@1.0.0',
+    'pnpm unpublish pkg', 'pnpm deprecate pkg@1 "old"', 'npx eas-cli update --branch production',
+    'npx eas-cli@latest update --auto', 'eas update:republish --group abc', 'pnpm dlx @changesets/cli publish',
+    './node_modules/.bin/semantic-release', 'npm exec semantic-release', 'bun x semantic-release',
+    'npx -p semantic-release semantic-release', 'npx semantic-release --dry-run=false',
+    'dotenv -e .env -- prisma migrate reset', 'docker compose exec api npx prisma migrate reset'])
+def test_typescript_patterns_block_and_name_their_file(tmp_path, command):
+    r = run_in(ts_destructive_repo(tmp_path), 'guard-destructive.py', bash(command))
+    assert r.code == 2
+    assert 'C4' in r.err and '(.claude/rules/destructive-commands.typescript.txt)' in r.err
+
+
+@pytest.mark.parametrize('command', [
+    'npm test', 'npm install release-it', 'npm install -D semantic-release', 'npm rm lodash', 'npm uninstall lodash',
+    'npm view x dist-tags', 'npm dist-tag ls pkg', 'npm owner ls pkg', 'npx semantic-release --dry-run',
+    'npx semantic-release -d', 'npx release-it --dry-run', 'npx prisma migrate dev', 'npx prisma db push',
+    'npx drizzle-kit push', 'npx knex migrate:rollback', 'npx sequelize db:migrate:undo', 'eas update --help',
+    'grep -rn "prisma migrate reset" docs/', 'rg "eas update" README.md', 'git log --grep "knex migrate:rollback --all"',
+    'git commit -m "docs: explain why prisma migrate reset is blocked"', 'echo npm unpublish pkg',
+    'npm install deprecate', 'eas update:list', 'eas update:view abc', 'npx release-it -d',
+    'npx release-it --changelog', 'npx release-it --release-version'])
+def test_typescript_patterns_leave_everyday_commands_alone(tmp_path, command):
+    assert run_in(ts_destructive_repo(tmp_path), 'guard-destructive.py', bash(command)).code == 0
+
+
 # ---------------- definition-of-done gate (B1) ----------------
 
 def test_lint_is_a_gate_the_stop_is_blocked_until_it_ran():

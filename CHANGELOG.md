@@ -9,6 +9,7 @@ Format: **Deleted** first — a smaller plugin each release is the goal.
 after the ask-first list now ask for confirmation. No file needs to change.
 
 ### Deleted
+- **The "TypeScript rules not shipped yet" path in `/setup`**: choosing TypeScript now installs a layer.
 - **Appending stack entries to shared files**: `/setup` no longer appends to `protected-paths.md` or
   `destructive-commands.txt`. `templates/stack-python/protected-paths.py.md` moved to
   `rules/stack-python/protected-paths.md`.
@@ -29,7 +30,10 @@ after the ask-first list now ask for confirmation. No file needs to change.
 - Each stack installs `protected-paths.<stack>.md` and `destructive-commands.<stack>.txt`, and the guards read every
   such file. A `!` exception applies within its own file. The C4 message names the file that matched.
 - `rules/stack-typescript/protected-paths.md` is new.
-- `/setup` asks first which stack the repo uses (TypeScript, Python or Both), detecting from `pyproject.toml`, `requirements*.txt`, `package.json` and `tsconfig.json`, and records `Stacks: python, typescript` in `CLAUDE.md`. Only the chosen stacks' files are copied, each once. Repos set up earlier get the line inferred and inserted on a re-run. `references/stack-typescript.md` is added; the TypeScript rule files themselves follow later, so choosing TypeScript records the line and installs only its protected-paths list.
+- TypeScript layer: `ts-tooling.md`, `ts-core.md`, `testing-ts.md`, stack rules `TS1`–`TS3`, destructive-command
+  patterns, and React, NestJS and React Native files installed only when `package.json` lists the framework.
+- A repo with both stacks gets labelled command-map rows (`lint (ts)`). Running either row satisfies the gate.
+- `/setup` asks first which stack the repo uses (TypeScript, Python or Both), detecting from `pyproject.toml`, `requirements*.txt`, `package.json` and `tsconfig.json`, and records `Stacks: python, typescript` in `CLAUDE.md`. Only the chosen stacks' files are copied, each once. Repos set up earlier get the line inferred and inserted on a re-run. `references/stack-typescript.md` is added.
 - Renamed to `code-writer`, version 0.2.0. Install with `claude plugin install code-writer@code-writer`; existing
   users must reinstall and change `rln-agent@rln` in their `enabledPlugins`. Hook messages are prefixed `[code-writer]`
   and the plan gate is `code-writer:plan-gate`. The description now says Python and TypeScript projects.

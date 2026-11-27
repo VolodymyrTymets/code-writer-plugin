@@ -2,8 +2,8 @@
 
 A Claude Code plugin that gives a Python or TypeScript repository one spec-driven workflow (plan → human approval → gate →
 implement → self-review → draft PR), a verification-first definition of done, reviewer subagents, and hooks that
-mechanically block the mistakes a prompt alone does not prevent. A Python layer adds rules for tooling, code and
-tests, a dependency-manager guard and an opt-in formatter.
+mechanically block the mistakes a prompt alone does not prevent. Python and TypeScript layers add rules for tooling,
+code and tests; the Python layer also has a dependency-manager guard and an opt-in formatter.
 
 Maintaining the plugin itself? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -37,7 +37,7 @@ Then, inside the repository:
 with the permission deny list, `.mcp.json`, the `docs/` skeleton, a PR template and the CI agent checks. Review and
 merge it before starting feature work — until then the hooks have no command map to read.
 
-`/setup` asks the stack first and installs only what you answer: **Python** gets the Python layer, **TypeScript** the TypeScript layer (only its protected-paths list ships today; its rule files are not written yet), **Both** each layer once. The answer is one line in `CLAUDE.md`, `Stacks: python, typescript`, which a re-run reads. Your answer wins over what `/setup` detects.
+`/setup` asks the stack first and installs only what you answer: **Python** gets the Python layer, **TypeScript** the TypeScript layer, **Both** each layer once. The answer is one line in `CLAUDE.md`, `Stacks: python, typescript`, which a re-run reads. Your answer wins over what `/setup` detects.
 
 To make the plugin install for everyone who opens the repo, `/setup` also writes this into `.claude/settings.json`:
 
@@ -138,6 +138,24 @@ path is touched:
 Two hooks belong to the layer: `guard-dependency-manager` (pip, uv, poetry or pipenv — whichever the repo declares)
 and `format-changed`, which runs `ruff format` on an edited `.py` file **only** when the repo declares a `[format]`
 section. A repo that never formatted its code is left alone, so a one-line fix stays a one-line diff.
+
+### The TypeScript layer
+
+`/setup` copies three rule files from `rules/stack-typescript/` into `.claude/rules/`:
+
+| File | Covers |
+|------|--------|
+| `ts-tooling.md` | one package manager, lockfile installs, pinned runtime, compiler and lint config, new dependencies |
+| `ts-core.md` | no `any`, validation at boundaries, errors, promises, modules, configuration |
+| `testing-ts.md` | runner conventions, typed fakes, mocking boundaries, determinism, skips |
+
+`ts-react.md`, `ts-nestjs.md` and `ts-react-native.md` are added only when a `package.json` lists `react`,
+`@nestjs/core` or `react-native`. `destructive-commands.typescript.txt` blocks registry changes, release tools,
+over-the-air updates and commands that drop database contents. The layer has no hooks yet: nothing mechanically blocks
+the wrong package manager.
+
+In a repo with both stacks the command map has labelled rows such as `lint (ts)`. **Running either `lint` row, or
+either test row, satisfies the definition-of-done gate**, so run both.
 
 ### Permissions are not part of the plugin
 
