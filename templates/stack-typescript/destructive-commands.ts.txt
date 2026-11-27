@@ -1,0 +1,17 @@
+# Installed by /setup (step 4.5) as .claude/rules/destructive-commands.typescript.txt. One regex per line.
+# Core already blocks `publish`, `deploy`, `submit`, `release` and `promote` as a command or subcommand.
+# registry changes that other people see
+\bnpm\s+(unpublish|deprecate)\b
+\bnpm\s+(dist-tag|owner)\s+(add|rm)\b
+# release tools that publish
+\b(changeset|@changesets/cli)\s+publish\b
+^(\w+=\S+\s+)*(npx\s+((-y|--yes)\s+)?|pnpm\s+((exec|dlx)\s+)?|yarn\s+(dlx\s+)?|bunx\s+)?semantic-release\b(?!.*\s(--dry-run|-d|--help|-h|--version)\b)
+^(\w+=\S+\s+)*(npx\s+((-y|--yes)\s+)?|pnpm\s+((exec|dlx)\s+)?|yarn\s+(dlx\s+)?|bunx\s+)?release-it\b(?!.*\s(--dry-run|--help|-h|--version)\b)
+\beas\s+update\b(?!.*\s(--help|-h)\b)
+# commands that drop or rewrite database contents
+\bprisma\s+migrate\s+reset\b
+\bprisma\s+db\s+push\b.*--(force-reset|accept-data-loss)\b
+\btypeorm\S*\s+(.*\s)?schema:drop\b
+\bsequelize(-cli)?\s+(.*\s)?db:(drop|migrate:undo:all)\b
+\bdrizzle-kit\s+push\b.*--force\b
+\bknex\s+(.*\s)?migrate:rollback\b.*--all\b

@@ -38,7 +38,7 @@ A type check is a `| typecheck | ... |` row in the command map and a B1 gate. Ru
 Copy each only if it is not already there, and never append to `protected-paths.md` or `destructive-commands.txt`.
 
 - `rules/stack-typescript/protected-paths.md` to `.claude/rules/protected-paths.typescript.md`, plus this repo's own generated output under its headings.
-- `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.typescript.txt`. It ships with T3; skip it until the file exists.
+- `templates/stack-typescript/destructive-commands.ts.txt` to `.claude/rules/destructive-commands.typescript.txt`., plus anything this repo can do irreversibly (a seed script that wipes data, a store or registry upload).
 
 ## Step 5 — Settings and verification
 

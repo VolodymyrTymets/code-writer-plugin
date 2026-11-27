@@ -500,6 +500,37 @@ def test_a_repo_that_is_not_set_up_falls_back_to_every_list_in_the_library(tmp_p
     assert decision(tmp_path, path) == expected
 
 
+# ---------------- TypeScript destructive commands (C4) ----------------
+
+def ts_destructive_repo(tmp_path):
+    template = PLUGIN / 'templates' / 'stack-typescript' / 'destructive-commands.ts.txt'
+    return rules_repo(tmp_path, {'destructive-commands.typescript.txt': template.read_text(encoding='utf-8')})
+
+
+@pytest.mark.parametrize('command', [
+    'npm unpublish pkg@1.0.0', 'npm deprecate pkg@1.x "old"', 'npm dist-tag add pkg@1.0.0 latest',
+    'npm dist-tag rm pkg beta', 'npm owner add someone pkg', 'npm owner rm someone pkg',
+    'npx changeset publish', 'pnpm exec changeset publish', 'npx semantic-release', 'CI=true pnpm semantic-release',
+    'yarn dlx release-it', 'release-it patch', 'eas update --branch main --message x',
+    'npx prisma migrate reset', 'npx prisma db push --force-reset', 'prisma db push --accept-data-loss',
+    'npx typeorm schema:drop -d src/ds.ts', 'npx typeorm-ts-node-esm -d src/ds.ts schema:drop',
+    'npx sequelize db:drop', 'npx sequelize-cli db:migrate:undo:all', 'npx drizzle-kit push --force',
+    'npx knex migrate:rollback --all'])
+def test_typescript_patterns_block_and_name_their_file(tmp_path, command):
+    r = run_in(ts_destructive_repo(tmp_path), 'guard-destructive.py', bash(command))
+    assert r.code == 2
+    assert 'C4' in r.err and '(.claude/rules/destructive-commands.typescript.txt)' in r.err
+
+
+@pytest.mark.parametrize('command', [
+    'npm test', 'npm install release-it', 'npm install -D semantic-release', 'npm rm lodash', 'npm uninstall lodash',
+    'npm view x dist-tags', 'npm dist-tag ls pkg', 'npm owner ls pkg', 'npx semantic-release --dry-run',
+    'npx semantic-release -d', 'npx release-it --dry-run', 'npx prisma migrate dev', 'npx prisma db push',
+    'npx drizzle-kit push', 'npx knex migrate:rollback', 'npx sequelize db:migrate:undo', 'eas update --help'])
+def test_typescript_patterns_leave_everyday_commands_alone(tmp_path, command):
+    assert run_in(ts_destructive_repo(tmp_path), 'guard-destructive.py', bash(command)).code == 0
+
+
 # ---------------- definition-of-done gate (B1) ----------------
 
 def test_lint_is_a_gate_the_stop_is_blocked_until_it_ran():
