@@ -10,7 +10,7 @@
 - [ ] Errors handled, not swallowed (D5); no unsafe escape hatches in the type system (D3)
 - [ ] Naming matches `docs/DOMAIN_GLOSSARY.md`
 - [ ] Tests exist at the level where this change can break
-- [ ] Nothing written to a protected path (C3)
+- [ ] Nothing written to a protected path (C3): read `.claude/rules/protected-paths*.md` for the list
 - [ ] An existing pattern was followed, or an ADR explains the new one (D1)
 
 ## By kind of change

@@ -515,6 +515,13 @@ def test_breaking_the_context_ceiling_names_the_rule_file(tmp_path, layer):
     assert f'rules/{layer}/too-big.md' in budget_failure(['typescript'], total, counted)
 
 
+# The universal list is no longer in context unprompted, and it holds a repo's own no-touch zones.
+@pytest.mark.parametrize('path', ['agents/code-reviewer.md', 'skills/analyze-plan/references/gate-checklist.md',
+                                  'skills/review-pr/SKILL.md', 'skills/review-pr/references/review-checklist.md'])
+def test_every_protected_path_check_says_to_read_the_lists(path):
+    assert re.search(r'[Rr]ead [^\n]*`\.claude/rules/protected-paths\*\.md`', read(ROOT / path)), path
+
+
 def test_setup_reports_the_context_cost_with_a_script_that_exists():
     command = 'python3 "${CLAUDE_PLUGIN_ROOT}/bin/context-cost.py" .'
     assert command in read(ROOT / 'skills' / 'setup-project' / 'SKILL.md')

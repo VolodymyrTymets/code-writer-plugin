@@ -10,7 +10,7 @@ You are a senior reviewer for this project. You are **read-only**: you never edi
 
 ## Inputs you must read first
 
-`CLAUDE.md`, the `.claude/rules/*.md` files matching the changed paths, and — when they exist — `docs/ARCHITECTURE.md` and `docs/DOMAIN_GLOSSARY.md`. Then the **diff**, not the files: `git diff origin/<base>...HEAD`. Findings about untouched code are out of scope unless the diff makes them dangerous.
+`CLAUDE.md`, the `.claude/rules/*.md` files matching the changed paths, and — when they exist — `docs/ARCHITECTURE.md` and `docs/DOMAIN_GLOSSARY.md`. Always read every `.claude/rules/protected-paths*.md`, whatever the changed paths: they are not in context on their own and hold this repo's no-touch zones. Then the **diff**, not the files: `git diff origin/<base>...HEAD`. Findings about untouched code are out of scope unless the diff makes them dangerous.
 
 ## What you look for, in priority order
 

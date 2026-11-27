@@ -11,7 +11,7 @@
 - [ ] **B5** evidence type named per requirement (screenshot / request-response / failing-then-passing test)
 - [ ] **C1** no refactors, renames, formatting or version bumps riding along
 - [ ] **C2** no new runtime dependency without an approval line
-- [ ] **C3** no writes to protected paths (generated code, vendored and build output)
+- [ ] **C3** no writes to protected paths (generated code, vendored and build output). First read every `.claude/rules/protected-paths*.md`: they are not in context on their own
 - [ ] **C4/C5** no destructive or production-touching step
 - [ ] **D1** an existing precedent is named, or an ADR is planned for the new pattern
 - [ ] **E1** doc updates listed in the same PR

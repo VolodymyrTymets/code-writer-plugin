@@ -30,7 +30,7 @@ Run them in parallel. They have no write tools; you decide what to act on.
 - **Evidence (B1/B2/B5):** is the evidence block real and complete? Does "executed" describe something that actually ran?
 - **Bypasses (B3):** grep the added lines for anything that silences a check — type-checker ignores, linter disables, skipped or `.only` tests, bypassed pre-commit, deleted assertions, blindly re-recorded snapshots. Each one needs a human-approved `// WHY:`. (The `bypass-scan` CI job does this too; do not rely on it to catch what you added.)
 - **Docs (E1):** are the doc updates the plan promised actually here?
-- **Protected paths (C3):** did anything land in generated or vendored files?
+- **Protected paths (C3):** read every `.claude/rules/protected-paths*.md`, then check that nothing landed on a listed path.
 - **Contract (backend 8):** OpenAPI, shared types and consumers updated together?
 - **Secrets (A6):** any key, token, DSN, or client data in the diff, including test fixtures?
 
