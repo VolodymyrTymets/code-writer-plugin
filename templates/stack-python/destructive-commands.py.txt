@@ -1,4 +1,4 @@
-# Appended by /setup (step 4.5) to .claude/rules/destructive-commands.txt. One JavaScript regex per line.
+# Installed by /setup (step 4.5) as .claude/rules/destructive-commands.python.txt. One regex per line.
 \bpip3?\s+install\b.*--break-system-packages
 \bsudo\s+pip3?\b
 \bpip3?\s+uninstall\b.*-y\b

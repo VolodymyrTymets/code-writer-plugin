@@ -239,8 +239,8 @@ def test_guard_destructive_honours_the_repo_declared_pattern_file():
 
 @pytest.mark.parametrize('path', [
     '.env', '.env.local', 'certs/server.pem', 'src/api/__generated__/types.py',
-    'src/client.generated.go', 'dist/main.js', 'poetry.lock'])
-def test_guard_protected_paths_blocks_secrets_generated_output_and_lockfiles(path):
+    'src/client.generated.go', 'target/app.jar'])
+def test_guard_protected_paths_blocks_secrets_and_generated_output(path):
     assert run('guard-protected-paths.py', edit(path)).code == 2
 
 
@@ -248,8 +248,7 @@ def test_guard_protected_paths_blocks_secrets_generated_output_and_lockfiles(pat
 # built for - its own stack rules scope themselves to `apps/api/**` and `services/*/src/**` - so a rule
 # that only holds at the repository root holds nowhere that matters (A4).
 @pytest.mark.parametrize('path', [
-    'apps/api/.env', 'apps/api/package-lock.json', 'apps/web/uv.lock',
-    'apps/api/dist/main.js', 'packages/ui/build/index.js', 'ios/Pods/Manifest.lock',
+    'apps/api/.env', 'services/core/target/app.jar',
     'packages/client/src/__generated__/types.py', 'apps/mobile/certs/dist.p12'])
 def test_guard_protected_paths_holds_one_workspace_deep_not_only_at_the_root(path):
     assert run('guard-protected-paths.py', edit(path)).code == 2
@@ -292,8 +291,9 @@ def test_a_protected_name_is_a_whole_path_segment_not_a_substring(path):
     'cat report | tee apps/web/uv.lock',
     'cp /tmp/x apps/api/package-lock.json',
     'cd apps/api && sed -i s/a/b/ dist/main.js'])
-def test_a_protected_path_is_protected_through_the_shell_too(command):
-    assert run('guard-protected-paths.py', bash(command)).code == 2
+def test_a_protected_path_is_protected_through_the_shell_too(tmp_path, command):
+    repo = stack_repo(tmp_path, 'python', 'typescript')
+    assert run_in(repo, 'guard-protected-paths.py', bash(command)).code == 2
 
 
 @pytest.mark.parametrize('command', [
@@ -422,6 +422,57 @@ def test_every_destructive_commands_file_is_read_and_the_message_names_it(tmp_pa
     new = run_in(repo, 'guard-destructive.py', bash('make flash'))
     assert new.code == 2
     assert '(.claude/rules/destructive-commands.extra.txt).' in new.err
+
+
+# ---------------- per-stack protected paths (C3) ----------------
+
+def stack_repo(tmp_path, *stacks):
+    """A repo holding the library's own files under the names /setup installs them as."""
+    rules = PLUGIN / 'rules'
+    files = {'protected-paths.md': (rules / 'core' / 'protected-paths.md').read_text()}
+    for s in stacks:
+        files[f'protected-paths.{s}.md'] = (rules / f'stack-{s}' / 'protected-paths.md').read_text()
+    return rules_repo(tmp_path, files)
+
+
+UNIVERSAL = {'.env': 'block', 'certs/a.pem': 'block', 'apps/api/Dockerfile': 'ask', 'src/app.rb': 'allow',
+             '.env.example': 'allow'}
+PYTHON_ONLY = {'apps/api/.venv/x.py': 'block', 'api_pb2.py': 'block', 'pyproject.toml': 'ask'}
+TYPESCRIPT_ONLY = {'node_modules/a/index.js': 'block', 'apps/web/package-lock.json': 'block',
+                   'package.json': 'ask', 'apps/web/tsconfig.build.json': 'ask'}
+SHARED = ['apps/api/dist/main.js', 'packages/ui/build/index.js', 'poetry.lock', 'apps/web/uv.lock',
+          'ios/Pods/Manifest.lock']
+
+
+@pytest.mark.parametrize('stacks', [('python',), ('typescript',), ('python', 'typescript')])
+def test_each_stack_choice_protects_its_own_paths_and_the_universal_ones(tmp_path, stacks):
+    repo = stack_repo(tmp_path, *stacks)
+    for path, expected in UNIVERSAL.items():
+        assert decision(repo, path) == expected, path
+    for stack, own in (('python', PYTHON_ONLY), ('typescript', TYPESCRIPT_ONLY)):
+        for path, expected in own.items():
+            assert decision(repo, path) == (expected if stack in stacks else 'allow'), path
+    for path in SHARED:
+        assert decision(repo, path) == 'block', path
+
+
+@pytest.mark.parametrize('removed, gone, kept', [
+    ('python', PYTHON_ONLY, TYPESCRIPT_ONLY), ('typescript', TYPESCRIPT_ONLY, PYTHON_ONLY)])
+def test_removing_one_stacks_file_unprotects_only_that_stacks_paths(tmp_path, removed, gone, kept):
+    repo = stack_repo(tmp_path, 'python', 'typescript')
+    (repo / '.claude' / 'rules' / f'protected-paths.{removed}.md').unlink()
+    for path in gone:
+        assert decision(repo, path) == 'allow', path
+    for path, expected in {**kept, **UNIVERSAL}.items():
+        assert decision(repo, path) == expected, path
+    for path in SHARED:
+        assert decision(repo, path) == 'block', path
+
+
+@pytest.mark.parametrize('path, expected', [
+    ('poetry.lock', 'block'), ('node_modules/a.js', 'block'), ('.env', 'block'), ('package.json', 'ask')])
+def test_a_repo_that_is_not_set_up_falls_back_to_every_list_in_the_library(tmp_path, path, expected):
+    assert decision(tmp_path, path) == expected
 
 
 # ---------------- definition-of-done gate (B1) ----------------
