@@ -95,13 +95,14 @@ Do not leave templates empty — an empty doc is worse than none, because the ag
 - Every `{{PLACEHOLDER}}` gone: `grep -r '{{' CLAUDE.md .claude/ docs/` returns nothing.
 - Every command in the command map actually runs (run them).
 - `CLAUDE.md` under 200 lines.
+- Measure what every session will now load, and keep the output for step 7: `python3 "${CLAUDE_PLUGIN_ROOT}/bin/context-cost.py" .`. It lists `CLAUDE.md`, the files it imports and the rule files without `paths:`. It reports, it does not pass or fail.
 - The hooks fire: try a write to a protected path and confirm it is blocked; confirm the definition-of-done gate can read the command map (it quotes your commands back when it blocks).
 - The deny list is live, not merely written. The check that counts is behavioural: reading a `.env` in this repo must be refused, and reading `.env.example` must still work. Then run `claude doctor`: under **Invalid settings** it names any rule Claude Code rejected, with the file, the key and the reason. It does not print the rules that were accepted, and it does not catch every bad one (a deny rule naming a tool that does not exist was not reported), so treat it as a way to find a broken rule, never as proof that the rest are in force.
 - MCP servers connect (`/mcp`).
 
 ## Step 7 — Hand over
 
-Open the PR, then tell the human: what was created, which conventions were adopted (brownfield), what still needs their input, and the workflow to use from now on (`/plan` → `/analyze` → `/implement` → `/review-pr`; the draft PR is the last stage of `/implement`). Walk the rest of the team through it — there is no onboarding command yet.
+Open the PR with the step 6 line counts (per file and total) in its body, then tell the human: those counts and what they are (lines every session pays for), what was created, which conventions were adopted (brownfield), what still needs their input, and the workflow to use from now on (`/plan` → `/analyze` → `/implement` → `/review-pr`; the draft PR is the last stage of `/implement`). Walk the rest of the team through it — there is no onboarding command yet.
 
 ## Definition of done
 - [ ] Mode detected and confirmed
@@ -112,6 +113,7 @@ Open the PR, then tell the human: what was created, which conventions were adopt
 - [ ] `permissions.deny` present in `.claude/settings.json`, adapted to this repo in both directions, and observed to block a `.env` read while blocking nothing legitimate — no other layer carries it
 - [ ] Stack layers: only the chosen stacks' manifests installed, once each (merged with the repo's own), stack sections appended, `CLAUDE.md` still under 200 lines
 - [ ] Every command in the map verified to run (or marked `none`)
+- [ ] Always-loaded line counts reported to the human and in the PR body
 - [ ] Knowledge docs actually filled, not left as templates
 - [ ] Existing decisions captured as ADRs (brownfield)
 - [ ] One PR opened, nothing committed to a protected branch

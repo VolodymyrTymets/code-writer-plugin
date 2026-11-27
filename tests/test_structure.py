@@ -504,6 +504,12 @@ def test_breaking_the_context_ceiling_names_the_rule_file(tmp_path, layer):
     assert f'rules/{layer}/too-big.md' in budget_failure(['typescript'], total, counted)
 
 
+def test_setup_reports_the_context_cost_with_a_script_that_exists():
+    command = 'python3 "${CLAUDE_PLUGIN_ROOT}/bin/context-cost.py" .'
+    assert command in read(ROOT / 'skills' / 'setup-project' / 'SKILL.md')
+    assert all((ROOT / 'bin' / s).exists() for s in CORE_SCRIPTS)
+
+
 # ---------------- hooks wiring ----------------
 
 def test_hooks_json_is_wired_to_scripts_that_exist():
