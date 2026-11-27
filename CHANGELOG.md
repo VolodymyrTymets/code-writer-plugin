@@ -6,9 +6,24 @@ Format: **Deleted** first — a smaller plugin each release is the goal.
 
 **Set-up repos get stricter.** The protected-paths guard used to read only the first two blocks of a file, so entries
 `/setup` had appended below them (the Python ones) were ignored. They are now enforced. Unlabelled additions placed
-after the ask-first list now ask for confirmation. No file needs to change.
+after the ask-first list now ask for confirmation. No file needs to change for this.
+
+**Optional manual step for set-up repos, to load less in every session.** Do not copy the new
+`protected-paths.md` over yours: that would erase the entries added for your repo. Instead:
+
+1. Add these two lines to the frontmatter of `.claude/rules/protected-paths.md`:
+
+   ```yaml
+   paths:
+     - ".claude/rules/protected-paths*.md"
+   ```
+
+2. In `CLAUDE.md`, replace the line that imports `@docs/RUNBOOK.md` with
+   ``- How to run things and what goes wrong: `docs/RUNBOOK.md` — read it when a command or the environment fails``.
 
 ### Deleted
+- **Two always-loaded files**: core `protected-paths.md` now loads only when a protected-paths list is read or edited
+  (the guard still reads it, so blocking is unchanged), and `CLAUDE.md` no longer imports `docs/RUNBOOK.md`.
 - **Python-only stack hooks**: both now serve TypeScript too.
 - **The "TypeScript rules not shipped yet" path in `/setup`**: choosing TypeScript now installs a layer.
 - **Appending stack entries to shared files**: `/setup` no longer appends to `protected-paths.md` or
@@ -30,9 +45,10 @@ after the ask-first list now ask for confirmation. No file needs to change.
 ### Added
 - **Context budget**: `bin/context-cost.py` lists the lines a repo loads in every session (`CLAUDE.md`, its `@`
   imports and rule files without `paths:`). `/setup` runs it and reports the result, and the structure test fails a
-  Python, TypeScript or Both export above 340 lines. CONTRIBUTING and README explain what loads when.
+  Python, TypeScript or Both export above 250 lines. CONTRIBUTING and README explain what loads when.
 
 ### Changed
+- `/analyze`, `/review-pr` and `code-reviewer` now read the protected-paths lists before checking C3.
 - **Repos with a `package.json` or Node lockfile get stricter**, set up or not: `guard-dependency-manager` blocks another
   Node manager (`ts-tooling-1`), forced and global installs (`ts-tooling-2`) and lockfile deletion (`ts-tooling-3`),
   and asks before a new runtime dependency. A confirmation question no longer stops later commands on the same line

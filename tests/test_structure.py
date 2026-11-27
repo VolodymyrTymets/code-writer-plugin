@@ -245,7 +245,7 @@ def test_rules_library_layers_budgets_and_required_stack_rules():
             if not b:
                 warns.append(f'{where}: no frontmatter')
                 continue
-            if 'paths:' not in b and (layer, r) != ('core', 'protected-paths.md'):
+            if 'paths:' not in b:
                 # in a stack layer this is context every session pays for, so it fails rather than warns
                 (fails if layer.startswith('stack-') else warns).append(f'{where}: no paths: globs - it would load unconditionally, every session')
             lines = len(read(d / r).split('\n'))
@@ -429,7 +429,7 @@ def test_export_sets_for_python_typescript_and_both_do_not_overlap():
 
 # Lines every session pays for in a freshly set-up repo: CLAUDE.md, the docs it imports and the rule files without
 # `paths:`. A line is what `wc -l` counts. Raising this is a decision to make in review, not a way to get green.
-CONTEXT_CEILING = 340
+CONTEXT_CEILING = 250
 
 
 def context_counter():
@@ -495,7 +495,12 @@ EXPORTS = [[s] for s in known_stacks()] + [known_stacks()]
 def test_every_export_stays_under_the_context_ceiling(tmp_path, stacks):
     total, counted = context_budget(ROOT, stacks, tmp_path)
     # a counter that silently counts nothing would pass any ceiling
-    assert {'rules/core/protected-paths.md', 'templates/ARCHITECTURE.md', 'templates/RUNBOOK.md'} <= set(counted)
+    imported = ('AGENT_TOOLING', 'ARCHITECTURE', 'BUSINESS_MODEL', 'DOMAIN_GLOSSARY')
+    assert {f'templates/{doc}.md' for doc in imported} <= set(counted)
+    # installed, but no session carries them: the hook reads the list itself, CLAUDE.md only points at the runbook
+    on_demand = {'rules/core/protected-paths.md', 'templates/RUNBOOK.md'}
+    assert on_demand <= set(build_export(ROOT, stacks, tmp_path).values())
+    assert not on_demand & set(counted)
     failure = budget_failure(stacks, total, counted)
     assert not failure, failure
 
@@ -508,6 +513,13 @@ def test_breaking_the_context_ceiling_names_the_rule_file(tmp_path, layer):
     (plugin / 'rules' / layer / 'too-big.md').write_text('---\ndescription: d\n---\n' + 'rule\n' * CONTEXT_CEILING)
     total, counted = context_budget(plugin, ['typescript'], tmp_path / 'repo')
     assert f'rules/{layer}/too-big.md' in budget_failure(['typescript'], total, counted)
+
+
+# The universal list is no longer in context unprompted, and it holds a repo's own no-touch zones.
+@pytest.mark.parametrize('path', ['agents/code-reviewer.md', 'skills/analyze-plan/references/gate-checklist.md',
+                                  'skills/review-pr/SKILL.md', 'skills/review-pr/references/review-checklist.md'])
+def test_every_protected_path_check_says_to_read_the_lists(path):
+    assert re.search(r'[Rr]ead [^\n]*`\.claude/rules/protected-paths\*\.md`', read(ROOT / path)), path
 
 
 def test_setup_reports_the_context_cost_with_a_script_that_exists():

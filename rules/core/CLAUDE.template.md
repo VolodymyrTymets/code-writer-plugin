@@ -88,7 +88,7 @@ Dependency manager: **{{DEPENDENCY_MANAGER}}**. Runtime pinned by **{{RUNTIME_VE
 - Domain terms: @docs/DOMAIN_GLOSSARY.md
 - Settled decisions: `docs/decisions/`
 - Agent tooling & MCP policy: @docs/AGENT_TOOLING.md
-- How to run things: @docs/RUNBOOK.md
+- How to run things and what goes wrong: `docs/RUNBOOK.md` — read it when a command or the environment fails
 - Workflow: `/plan` → `/analyze` → `/implement` → `/review-pr`. The draft PR is the last stage of `/implement`, not a separate command.
 
 <!-- PROJECT-SPECIFIC RULES: add below this line, keep each one short and say why. -->

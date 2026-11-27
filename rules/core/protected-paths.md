@@ -1,5 +1,7 @@
 ---
 description: Paths the agent must never write to, and paths that need confirmation first. Read by the guard-protected-paths hook.
+paths:
+  - ".claude/rules/protected-paths*.md"
 ---
 
 # Protected paths

@@ -188,8 +188,10 @@ names each one still to run:
 
 What `/setup` installs competes with your code for the model's context window, and not all of it equally:
 
-- **Every session:** `CLAUDE.md`, the `docs/` files it imports and the universal `protected-paths.md`.
-- **Only when a matching file is touched:** the stack rules.
+- **Every session:** `CLAUDE.md` and the `docs/` files it imports.
+- **Only when a matching file is touched:** the stack rules, and the universal `protected-paths.md` (when a
+  protected-paths list is read or edited). The guard reads the lists itself, so blocking does not depend on this.
+- **Only when opened:** `docs/RUNBOOK.md`, which `CLAUDE.md` points at.
 
 `/setup` reports the always-loaded line count, per file and in total. Choose only the stacks the repo uses. The docs it
 imports grow as you fill them, so keep them short.
