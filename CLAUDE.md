@@ -34,7 +34,7 @@ The hook lists live in `tests/test_structure.py` (`CORE_SKILLS`, `STACK_SKILLS`,
 
 **Hooks** (`hooks/hooks.json` → `bin/*.py`, shared helpers in `bin/lib/util.py`):
 - PreToolUse guards: `guard-git`, `guard-destructive`, `guard-dependency-manager`, `guard-protected-paths`, `guard-plan-approval`. The path and plan guards are wired for `Bash` and for `Edit|Write|...|mcp__.*`, so a write through the shell or an MCP tool cannot bypass them. The structure test checks both wirings.
-- `record-activity` (PostToolUse and PostToolUseFailure) logs verification runs to `.claude/.state`, which is gitignored. `verify-dod` (Stop) reads that log and blocks stopping with code changed but no lint / test run (rule B1).
+- `record-activity` (PostToolUse and PostToolUseFailure) logs verification runs to `.claude/.state`, which is gitignored. `verify-dod` (Stop) reads that log and blocks stopping with code changed but no lint / test run (rule B1). Where `CLAUDE.md` has `Gate paths (<label>)` lines, it requires the `(<label>)` rows of the edited files, not just any row of the kind.
 - Every block message names a rule ID (A1–A4 git, B1 definition of done, B4 plan approval, C3 protected path, C4/C5 destructive and production, `py-tooling-1..3` and `ts-tooling-1..3` dependencies, G2 no project knowledge). The IDs are defined in `rules/core/CLAUDE.template.md`, the two `*-tooling` sets in their stack's tooling rule file. Keep message text and IDs stable, since docs and tests refer to them.
 - `guard-git` and `guard-destructive` match on the command text, so a heredoc or `echo` that merely *contains* `rm -rf`, `curl … | sh` or `gh release create` is blocked as well. When writing such text into a file from the shell, use the Write tool instead.
 

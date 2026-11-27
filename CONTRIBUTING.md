@@ -119,4 +119,7 @@ Their rule IDs are cited in the stack's tooling rule file.
 - A reference may also end with `## Optional files`: bullets of the form ``- `<path>` — `<dependency>` ``, each copied
   only when a `package.json` in the repo lists the dependency.
 - With two stacks, a task both have gets a second, labelled row (`lint (ts)`); the hooks key rows by name. Label with
-  `ts` or `py`, never the full name (`typescript` contains `types`). Either row satisfies the gate: a known limit.
+  `ts` or `py`, never the full name (`typescript` contains `types`).
+- Each stack reference gives one ``Gate paths (<label>): `glob` ...`` line for two-stack repos. `record-activity`
+  records which row ran, and `verify-dod` requires the rows of each label whose globs match an edited file. The hooks
+  learn stacks from these lines only; without them either row satisfies the gate. A new stack adds its own line.

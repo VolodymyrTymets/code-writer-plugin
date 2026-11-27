@@ -88,7 +88,7 @@ Every block names a rule ID and the allowed alternative. The common ones:
 | You see | Why | What to do |
 |---------|-----|------------|
 | **B4** — plan not approved | A plan exists for the branch's ticket without an `Approved-by:` line | Get a human decision and add the line (above). No ticket in the branch or no plan file means the gate stays silent |
-| **B1** — definition of done | You are stopping with code changed but no lint / tests / execution recorded | Run the commands the message quotes from your command map, **each on its own line**. `make test \| tail`, `make lint \|\| true` and `make test ; echo done` do not count — the exit code is not the tool's. After two blocks the gate hands control back to you |
+| **B1** — definition of done | You are stopping with code changed but no lint / tests / execution recorded | Run the commands the message quotes from your command map (in a two-stack repo, each stack's own), **each on its own line**. `make test \| tail`, `make lint \|\| true` and `make test ; echo done` do not count — the exit code is not the tool's. After two blocks the gate hands control back to you |
 | **C3** — protected path | Secrets, lockfiles, build output, generated code — also when written through the shell (`>`, `sed -i`, `cp`) or an MCP tool | Edit the source of truth instead. Pipeline and agent-config files ask for confirmation rather than block |
 | **C4 / C5** — destructive command | `rm -rf` outside build dirs, publish/deploy, infrastructure CLIs, anything aimed at a production host | Run it yourself if it is really intended. Repo-specific patterns live in the `destructive-commands*.txt` files below |
 | **A1–A4** — git | Commit/push on a protected branch, plain `--force`, `--no-verify`, amending pushed commits, merging or approving a PR | Branch first; use `--force-with-lease`; merging stays a human action |
@@ -165,8 +165,24 @@ The same two hooks serve this layer, each command judged only by its own ecosyst
   key in `package.json`) or biome (a `formatter` block in `biome.json` or `biome.jsonc`), only from
   `node_modules/.bin`. Both declared, neither declared or not installed means nothing happens.
 
-In a repo with both stacks the command map has labelled rows such as `lint (ts)`. **Running either `lint` row, or
-either test row, satisfies the definition-of-done gate**, so run both.
+In a repo with both stacks the command map has labelled rows such as `lint (ts)`, and one line per stack under it
+says which files that stack's rows cover (`/setup` writes them):
+
+```text
+Gate paths (py): `**/*.py` `**/pyproject.toml`
+Gate paths (ts): `**/*.{ts,tsx}` `**/package.json`
+```
+
+The definition-of-done gate then requires the typecheck, lint and test rows of every stack whose files you edited, and
+names each one still to run:
+
+- a row `<task> (label)` belongs to the label with the same name; a stack with no row of its own is held to the plain row;
+- run the command as the map writes it. A form that drops one of its words, or a command not in the map, counts for no row;
+- an `e2e` run does not stand in for a test row that is split by stack;
+- a failed command that is not in the map but reads as a check (`npm run test:watch`) retires every row of that kind;
+- a file that matches no line (a CI file, a `Makefile`) adds no demand;
+- without `Gate paths` lines, **running either row satisfies the gate**. A repo set up earlier gets the lines by
+  re-running `/setup`.
 
 ### Permissions are not part of the plugin
 

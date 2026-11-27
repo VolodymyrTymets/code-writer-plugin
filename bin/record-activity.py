@@ -7,7 +7,7 @@ PostToolUse and PostToolUseFailure: Edit|Write|MultiEdit|Bash|mcp__.*
 import re
 
 from lib.util import (read_payload, project_dir, rel_from_root, load_state, save_state, verifiable_segments,
-                      command_tokens, verification_needles, is_code_file, write_targets, now_iso, allow)
+                      command_tokens, command_rows, verification_needles, is_code_file, write_targets, now_iso, allow)
 
 p = read_payload()
 root = project_dir(p)
@@ -51,16 +51,27 @@ def runs_command(seg_tokens, cmd_tokens):
             and all(t in seg_tokens for t in cmd_tokens[1:]))
 
 
+def rows_run(tokens, rows):
+    """The command-map rows this segment runs. A row whose words are all part of another matched row's is
+    dropped: running the longer command says nothing about the shorter one's own run.
+    """
+    hits = [(r, set(command_tokens(r['needle']))) for r in rows if runs_command(tokens, command_tokens(r['needle']))]
+    return [r for r, words in hits if not any(words < other for _, other in hits)]
+
+
 tool_name = p.get('tool_name') or ''
 if tool_name == 'Bash':
     needles = verification_needles(root)
+    rows = command_rows(root)
     for item in verifiable_segments((p.get('tool_input') or {}).get('command') or ''):
         seg, covered = item['seg'], item['covered']
         tokens = command_tokens(seg)
         buckets = set()
+        ran = []
         head = tokens[0] if tokens else ''
 
         if not READS_ONLY.fullmatch(head):
+            ran = rows_run(tokens, rows)
             for n in needles:
                 if runs_command(tokens, command_tokens(n['needle'])):
                     buckets.add(n['bucket'])
@@ -71,6 +82,15 @@ if tool_name == 'Bash':
                     buckets.add(g)
         if EXECUTES.fullmatch(head):
             buckets.add('executed')
+
+        # which row ran, not only which kind: a repo may require one row per part of the tree (verify-dod)
+        if failed:
+            # a failure no row claims could be any row of its kind, so it retires them all
+            for r in ran or [r for r in rows if r['bucket'] in buckets]:
+                s['rows'].pop(r['task'], None)
+        elif covered:
+            for r in ran:
+                s['rows'][r['task']] = {'at': now, 'cmd': seg}
 
         for b in buckets:
             # A failure retires the claim rather than merely failing to add one: a typecheck that passed
