@@ -1254,3 +1254,56 @@ def test_the_gate_ignores_tools_that_do_not_write_files():
     for payload in [{'tool_name': 'Read', 'tool_input': {'file_path': 'src/a.py'}},
                     {'tool_name': 'Bash', 'tool_input': {'command': 'ls'}}]:
         assert run_plan('guard-plan-approval.py', payload).code == 0
+
+
+# ---------------- context cost report (not a hook) ----------------
+
+def context_cost(repo):
+    r = subprocess.run([sys.executable, str(PLUGIN / 'bin' / 'context-cost.py'), str(repo)],
+                       capture_output=True, text=True, encoding='utf-8')
+    assert r.returncode == 0, r.stderr
+    rows = {name: int(n) for n, name in re.findall(r'^ *(\d+)  (.+)$', r.stdout, re.M)}
+    return rows.pop('total'), rows
+
+
+def put(repo, name, text):
+    path = repo / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+
+
+def test_context_cost_lists_what_every_session_loads_and_totals_it(tmp_path):
+    put(tmp_path, 'CLAUDE.md', '# t\n- Architecture: @docs/arch.md\n- Notes: @docs/notes.md.\n')     # 3 lines
+    put(tmp_path, '.claude/CLAUDE.md', 'extra\n')                                                    # 1
+    put(tmp_path, 'docs/arch.md', 'a\nsee @more.md\n')                                               # 2, relative to docs/
+    put(tmp_path, 'docs/more.md', 'm\n')                                                             # 1
+    put(tmp_path, 'docs/notes.md', 'n\n')                                                            # 1
+    put(tmp_path, '.claude/rules/always.md', '---\ndescription: d\n---\nrule\n')                     # 4
+    put(tmp_path, '.claude/rules/team/deep.md', 'rule\nrule\n')                                      # 2
+    total, rows = context_cost(tmp_path)
+    assert rows == {'CLAUDE.md': 3, '.claude/CLAUDE.md': 1, 'docs/arch.md': 2, 'docs/more.md': 1,
+                    'docs/notes.md': 1, '.claude/rules/always.md': 4, '.claude/rules/team/deep.md': 2}
+    assert total == 14
+
+
+def test_context_cost_ignores_what_loads_on_demand_or_never(tmp_path):
+    put(tmp_path, 'CLAUDE.md', 'run `@span.md`\n```\n@fenced.md\n```\n@missing.md\nmail a@mail.md\n')
+    for name in ('span.md', 'fenced.md', 'mail.md'):
+        put(tmp_path, name, 'x\n')
+    put(tmp_path, '.claude/rules/scoped.md', '---\ndescription: d\npaths:\n  - "**/*.c"\n---\nrule\n')
+    put(tmp_path, '.claude/rules/destructive-commands.txt', '^make wipe\n')
+    assert context_cost(tmp_path) == (6, {'CLAUDE.md': 6})
+
+
+def test_context_cost_counts_a_file_once_and_stops_after_four_hops(tmp_path):
+    put(tmp_path, 'CLAUDE.md', '@h1.md @h1.md\n')
+    for hop in range(1, 6):
+        put(tmp_path, f'h{hop}.md', f'@h{hop + 1}.md @CLAUDE.md\n')
+    put(tmp_path, 'h6.md', 'x\n')
+    total, rows = context_cost(tmp_path)
+    assert sorted(rows) == ['CLAUDE.md', 'h1.md', 'h2.md', 'h3.md', 'h4.md']
+    assert total == 5
+
+
+def test_context_cost_of_a_repo_with_no_config_is_zero(tmp_path):
+    assert context_cost(tmp_path) == (0, {})
