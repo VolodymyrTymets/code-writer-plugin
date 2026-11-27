@@ -9,7 +9,7 @@ plugin on a repository, see [README.md](README.md). This file is the only design
 |-------|----------|---------------|
 | core | `rules/core/`, the 9 workflow skills, 7 core hooks in `bin/`, `mcp/base.json` | never names a language, framework or dependency manager — the hooks read the repo's own command map instead |
 | stack-python | `rules/stack-python/`, 2 stack hooks, `templates/stack-python/` | names them on purpose |
-| stack-typescript | `rules/stack-typescript/` (only `protected-paths.md` so far) | names them on purpose |
+| stack-typescript | `rules/stack-typescript/`, `templates/stack-typescript/`, no hooks yet | names them on purpose |
 
 The layers are separated by directory rather than by repository. A boundary between directories is free to
 move; one between repositories is not, and two repos mean two installs and a silently degraded config for anyone
@@ -23,12 +23,12 @@ the core does not change.
 |------|----------|
 | `rules/core/` | `CLAUDE.template.md` — the constitution, rule IDs A1–G3 and T1–T4 · `testing.md` · `protected-paths.md` (universal entries only) |
 | `rules/stack-python/` | `python-tooling.md` · `python-core.md` · `testing-python.md` · `CLAUDE.stack-section.md` · `protected-paths.md` |
-| `rules/stack-typescript/` | `protected-paths.md` |
+| `rules/stack-typescript/` | `ts-tooling.md` · `ts-core.md` · `testing-ts.md` · `CLAUDE.stack-section.md` · `protected-paths.md` · optional `ts-react.md`, `ts-nestjs.md`, `ts-react-native.md` |
 | `skills/` | **flat, 9 skills**: `setup-project`, `feature`, `plan-feature`, `analyze-plan`, `develop-feature`, `write-tests`, `write-docs`, `review-pr`, `fix-bug` |
 | `agents/` | `test-runner`, `code-reviewer`, `plan-gate` (the forked, write-tool-free context `/analyze` runs in) |
 | `hooks/hooks.json` + `bin/` | 9 hooks, stdlib-only Python 3.9+; shared helpers in `bin/lib/util.py` |
 | `mcp/` | `base.json` — library docs (context7) and code navigation (serena) |
-| `templates/` | `docs/` templates, project `settings.json` (**the deny list lives here, not in the plugin**), PR template, CI checks (`github/workflows/agent-checks.yml`), `destructive-commands.txt`, and `stack-python/` destructive commands |
+| `templates/` | `docs/` templates, project `settings.json` (**the deny list lives here, not in the plugin**), PR template, CI checks (`github/workflows/agent-checks.yml`), `destructive-commands.txt`, and `stack-python/` and `stack-typescript/` destructive commands |
 | `evals/` | skill eval cases for `claude plugin eval` — see `evals/README.md` |
 | `tests/` | pytest: the hook behaviour suite (`test_hooks.py`) and the structure guard (`test_structure.py`) |
 
@@ -64,7 +64,7 @@ Fixtures on purpose: the core fixture's command map is driven through `make`, so
 on one ecosystem's tooling fails the suite; the pip and uv fixtures exercise the two Python hooks and prove the
 dependency guard follows whichever manager the repo declares. The formatter test is skipped on a machine without `ruff`.
 
-The structure guard checks what review keeps missing: the Python layer is complete, every `{{PLACEHOLDER}}` in
+The structure guard checks what review keeps missing: each stack layer is complete and path-scoped, every `{{PLACEHOLDER}}` in
 `rules/` is documented in `/setup`, no skill has a nested subdirectory, no hook names a payload field Claude Code does
 not send, and both write gates are wired for `Bash` and `mcp__.*`. A stack term in a **core hook** fails the build;
 anywhere else in the core layer it warns.
@@ -105,7 +105,7 @@ stacks need is listed in both, so removing one stack's file leaves the other's p
 - Shape: `Stacks: python, typescript`, matched by `^Stacks:\s*(.+)$`. Plain text: no bold, no backticks.
 - Values: the names of the stacks `/setup` knows, lowercase, comma separated. A stack is known when
   `skills/setup-project/references/stack-<name>.md` exists with an `## Export manifest`. Its rule files may land later:
-  until `rules/stack-typescript/ts-core.md` exists, `typescript` installs only its protected-paths list. `Stacks: none` means no
+  a stack ships once its `*-core.md` rule file exists. `Stacks: none` means no
   stack known to `/setup` (the PR names the missing rules).
 - Repos set up before this line existed have a stack section but no line. `/setup` infers the stack from the section,
   asks for confirmation, inserts the line and does not append the section again.
@@ -113,3 +113,7 @@ stacks need is listed in both, so removing one stack's file leaves the other's p
 - Each stack reference (`skills/setup-project/references/stack-<name>.md`) ends with an `## Export manifest`: a bullet
   list of repo-relative paths, one per line. `/setup` copies exactly those files for a chosen stack, and
   `tests/test_structure.py` checks that the sets for Python, TypeScript and Both never overlap.
+- A reference may also end with `## Optional files`: bullets of the form ``- `<path>` — `<dependency>` ``, each copied
+  only when a `package.json` in the repo lists the dependency.
+- With two stacks, a task both have gets a second, labelled row (`lint (ts)`); the hooks key rows by name. Label with
+  `ts` or `py`, never the full name (`typescript` contains `types`). Either row satisfies the gate: a known limit.

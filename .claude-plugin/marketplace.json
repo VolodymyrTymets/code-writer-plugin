@@ -8,7 +8,7 @@
     {
       "name": "code-writer",
       "source": "./",
-      "description": "Claude Code config for Python and TypeScript projects: constitution, spec-driven workflow with gates, verification-first definition of done, reviewer subagents, mechanical hooks, plus a Python rule layer."
+      "description": "Claude Code config for Python and TypeScript projects: constitution, spec-driven workflow with gates, verification-first definition of done, reviewer subagents, mechanical hooks, plus Python and TypeScript rule layers."
     }
   ]
 }
