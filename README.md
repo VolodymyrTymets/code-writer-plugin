@@ -184,6 +184,16 @@ names each one still to run:
 - without `Gate paths` lines, **running either row satisfies the gate**. A repo set up earlier gets the lines by
   re-running `/setup`.
 
+### What it costs in context
+
+What `/setup` installs competes with your code for the model's context window, and not all of it equally:
+
+- **Every session:** `CLAUDE.md`, the `docs/` files it imports and the universal `protected-paths.md`.
+- **Only when a matching file is touched:** the stack rules.
+
+`/setup` reports the always-loaded line count, per file and in total. Choose only the stacks the repo uses. The docs it
+imports grow as you fill them, so keep them short.
+
 ### Permissions are not part of the plugin
 
 Claude Code applies only `agent` and `subagentStatusLine` from a plugin's own settings and silently ignores

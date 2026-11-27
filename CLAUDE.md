@@ -48,5 +48,6 @@ The hook lists live in `tests/test_structure.py` (`CORE_SKILLS`, `STACK_SKILLS`,
 - Skills have no nested subdirectories, other than `references/`. Every `{{PLACEHOLDER}}` in `rules/` must be documented in `skills/setup-project`.
 - Project-specific knowledge never enters this repo (G2). Generalise it first.
 - Prefer a lint rule or a hook over a prompt rule.
+- Always-loaded lines (`CLAUDE.md`, its `@` imports, rules without `paths:`) are capped per export by `CONTEXT_CEILING` in the structure test. See "Context budget" in `CONTRIBUTING.md`.
 - `CHANGELOG.md` is ordered newest release first and **leads with a "Deleted" section**. The version lives in `.claude-plugin/plugin.json`.
 - Default branch is `main`. Branch before committing. Hooks block commits and pushes on protected branches.

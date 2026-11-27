@@ -27,6 +27,11 @@ after the ask-first list now ask for confirmation. No file needs to change.
 - The `typecheck` row and `{{CMD_TYPECHECK}}`: no Python repo this plugin targets runs one by default.
 - The `build-validator` agent (typecheck and build runner); `test-runner` and `code-reviewer` remain.
 
+### Added
+- **Context budget**: `bin/context-cost.py` lists the lines a repo loads in every session (`CLAUDE.md`, its `@`
+  imports and rule files without `paths:`). `/setup` runs it and reports the result, and the structure test fails a
+  Python, TypeScript or Both export above 340 lines. CONTRIBUTING and README explain what loads when.
+
 ### Changed
 - **Repos with a `package.json` or Node lockfile get stricter**, set up or not: `guard-dependency-manager` blocks another
   Node manager (`ts-tooling-1`), forced and global installs (`ts-tooling-2`) and lockfile deletion (`ts-tooling-3`),

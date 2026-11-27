@@ -26,7 +26,7 @@ the core does not change.
 | `rules/stack-typescript/` | `ts-tooling.md` · `ts-core.md` · `testing-ts.md` · `CLAUDE.stack-section.md` · `protected-paths.md` · optional `ts-react.md`, `ts-nestjs.md`, `ts-react-native.md` |
 | `skills/` | **flat, 9 skills**: `setup-project`, `feature`, `plan-feature`, `analyze-plan`, `develop-feature`, `write-tests`, `write-docs`, `review-pr`, `fix-bug` |
 | `agents/` | `test-runner`, `code-reviewer`, `plan-gate` (the forked, write-tool-free context `/analyze` runs in) |
-| `hooks/hooks.json` + `bin/` | 9 hooks, stdlib-only Python 3.9+; shared helpers in `bin/lib/util.py` |
+| `hooks/hooks.json` + `bin/` | 9 hooks, stdlib-only Python 3.9+; shared helpers in `bin/lib/util.py`. `bin/context-cost.py` is not a hook: it reports the lines a repo loads every session (see Context budget) |
 | `mcp/` | `base.json` — library docs (context7) and code navigation (serena) |
 | `templates/` | `docs/` templates, project `settings.json` (**the deny list lives here, not in the plugin**), PR template, CI checks (`github/workflows/agent-checks.yml`), `destructive-commands.txt`, and `stack-python/` and `stack-typescript/` destructive commands |
 | `evals/` | skill eval cases for `claude plugin eval` — see `evals/README.md` |
@@ -65,7 +65,7 @@ on one ecosystem's tooling fails the suite; the pip and uv fixtures, the Node re
 Both repos exercise the two stack hooks and prove the dependency guard follows whichever manager the repo declares.
 The Node formatter tests use stub binaries; the ruff test is skipped on a machine without `ruff`.
 
-The structure guard checks what review keeps missing: each stack layer is complete and path-scoped, every `{{PLACEHOLDER}}` in
+The structure guard checks what review keeps missing: every export stays under the context ceiling, each stack layer is complete and path-scoped, every `{{PLACEHOLDER}}` in
 `rules/` is documented in `/setup`, no skill has a nested subdirectory, no hook names a payload field Claude Code does
 not send, and both write gates are wired for `Bash` and `mcp__.*`. A stack term in a **core hook** fails the build;
 anywhere else in the core layer it warns.
@@ -75,6 +75,38 @@ The repo has no CI workflow of its own yet — run both suites locally before op
 
 A hook change without a test case is not accepted: these guards run on real repositories, where a false block wastes
 a developer's turn and a missed block means the rule quietly stopped existing.
+
+## Context budget
+
+Everything the plugin installs competes with the user's code for the model's context window. A second stack roughly
+doubles the stack rules, so most of them must cost nothing until needed.
+
+| What it is | When it is in context | Cost for a two-stack repo |
+|------------|-----------------------|---------------------------|
+| `CLAUDE.md` and its stack sections | every session, in full | paid always: keep each stack section to about 8 lines and the file under 200 |
+| files `CLAUDE.md` imports with `@path` | every session, in full | paid always: an import organises, it does not save |
+| rule files without `paths:` | every session | paid always: allowed only for the universal file |
+| rule files with `paths:` | only after Claude reads or edits a matching file | paid on demand: TypeScript rules do not load while editing `.py` files |
+| hooks (`bin/*.py`) | run outside the model; only their messages enter: a block message, and the session briefing | small |
+| skills | the description is always listed, the body loads when invoked | small: do not add skills per stack |
+
+The loading behaviour is Claude Code's, described at <https://code.claude.com/docs/en/memory>.
+
+**The ceiling.** *Always-loaded* means the first three rows: `CLAUDE.md`, everything it imports (four hops at most) and
+every `.claude/rules/**/*.md` without `paths:`. Lines are raw lines as `wc -l` counts them, comments and frontmatter
+included. `tests/test_structure.py` builds the Python, TypeScript and Both exports from `rules/` and `templates/`,
+counts them with `bin/context-cost.py` and fails any above `CONTEXT_CEILING`, listing each counted file. The `docs/`
+templates count too, because the constitution imports them. The ceiling covers what the plugin ships, not what `/setup`
+or the repo adds later (labelled command rows, filled docs). Raise it only on purpose, in a PR that says why.
+`/setup` runs the same script on the repo it set up and reports the result.
+
+Rules of thumb:
+
+1. A stack rule file without `paths:` is a bug. The structure test fails it; only core `protected-paths.md` is exempt.
+2. Prefer a lint rule or a hook over a prompt rule. A hook costs no context until it speaks.
+3. Never export a stack the user did not choose. An unused rule is not free.
+4. Put framework guidance in optional files, installed only when the framework is present.
+5. If a rule file grows past about 50 lines, split it by `paths:` so only the relevant part loads.
 
 ## Adding to this plugin
 
