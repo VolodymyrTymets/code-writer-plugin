@@ -25,7 +25,8 @@ python -m pytest tests/test_hooks.py -k "<substring>"   # a single hook test
 
 **Two layers, separated by directory, not by repo.**
 - **core**: `rules/core/`, 9 workflow skills, 7 core hooks, `mcp/base.json`. It must never name a language, framework or dependency manager. The hooks read the repo's own **command map**, a markdown table in the target repo's `CLAUDE.md` (lint / affected tests ...), instead of hardcoding tooling.
-- **stack-python**: `rules/stack-python/` (`python-tooling`, `python-core`, `testing-python`), `templates/stack-python/`, and 2 stack hooks (`guard-dependency-manager` for pip / uv / poetry / pipenv, `format-changed` for opt-in `ruff format`). There are no stack skills; every skill is stack-neutral and the Python knowledge is in rules.
+- **stack-python**: `rules/stack-python/` (`python-tooling`, `python-core`, `testing-python`, `protected-paths`), `templates/stack-python/`, and 2 stack hooks (`guard-dependency-manager` for pip / uv / poetry / pipenv, `format-changed` for opt-in `ruff format`). There are no stack skills; every skill is stack-neutral and the Python knowledge is in rules.
+- **stack-typescript**: `rules/stack-typescript/protected-paths.md` only, so far. Core `protected-paths.md` holds universal entries; each stack's list installs as its own `protected-paths.<stack>.md`.
 
 The hook lists live in `tests/test_structure.py` (`CORE_SKILLS`, `STACK_SKILLS`, `CORE_HOOKS`, `STACK_HOOKS`). A stack term in a core hook fails the build. Elsewhere in core it only warns.
 
