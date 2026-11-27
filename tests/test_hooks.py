@@ -347,6 +347,83 @@ def test_guard_protected_paths_allows_source_and_asks_on_pipeline_files():
     assert re.search(r'"permissionDecision":"ask"', run('guard-protected-paths.py', edit('apps/api/Dockerfile')).out)
 
 
+# ---------------- several rule files (C3, C4) ----------------
+
+def rules_repo(tmp_path, files: dict):
+    (tmp_path / '.claude' / 'rules').mkdir(parents=True)
+    for name, text in files.items():
+        (tmp_path / '.claude' / 'rules' / name).write_text(text)
+    return tmp_path
+
+
+def lists_md(never=(), ask=()):
+    return '\n'.join(['## Never write', '```', *never, '```', '## Ask first', '```', *ask, '```', ''])
+
+
+def decision(repo, path):
+    r = run_in(repo, 'guard-protected-paths.py', edit(path))
+    if r.code == 2:
+        return 'block'
+    assert r.code == 0, r.err
+    return 'ask' if '"permissionDecision":"ask"' in r.out else 'allow'
+
+
+def test_protected_path_files_merge_and_an_exception_stays_in_its_own_file(tmp_path):
+    repo = rules_repo(tmp_path, {
+        'protected-paths.md': lists_md(never=['**/*.secret'], ask=['**/ci.cfg']),
+        'protected-paths.extra.md': lists_md(never=['**/vault/**', '!**/open.secret'], ask=['**/app.cfg'])})
+    assert decision(repo, 'a/b.secret') == 'block'
+    assert decision(repo, 'vault/x') == 'block'
+    assert decision(repo, 'ci.cfg') == 'ask'
+    assert decision(repo, 'app.cfg') == 'ask'
+    assert decision(repo, 'open.secret') == 'block', 'an exception must not carve another file'
+
+
+def test_an_unrelated_file_with_a_similar_name_is_not_a_rule_file(tmp_path):
+    repo = rules_repo(tmp_path, {'protected-paths.md': lists_md(never=['**/*.secret']),
+                                 'protected-paths-notes.md': '```\nsrc/**\n```\n'})
+    assert decision(repo, 'src/a.rb') == 'allow'
+
+
+def test_a_set_up_repo_does_not_get_the_plugin_fallback(tmp_path):
+    repo = rules_repo(tmp_path, {'protected-paths.md': (PLUGIN / 'rules' / 'core' / 'protected-paths.md').read_text()})
+    assert decision(repo, 'package.json') == 'allow'
+
+
+def test_a_file_without_the_headings_is_read_by_position(tmp_path):
+    repo = rules_repo(tmp_path, {'protected-paths.md': '```\n**/a\n```\n```\n**/b\n```\n'})
+    assert (decision(repo, 'a'), decision(repo, 'b')) == ('block', 'ask')
+
+
+def test_a_later_block_joins_the_latest_never_or_ask_heading(tmp_path):
+    repo = rules_repo(tmp_path, {'protected-paths.md': lists_md(never=['**/a'], ask=['**/b'])
+                                 + '## Project additions\n```\n**/legacy/**\n```\n### Never write\n```\n**/frozen/**\n```\n'})
+    assert decision(repo, 'legacy/x') == 'ask'
+    assert decision(repo, 'frozen/x') == 'block'
+
+
+# A repo set up before the lists were split holds one protected-paths.md with the Python block appended.
+@pytest.mark.parametrize('path, expected', [
+    ('.env.example', 'allow'), ('src/a.rb', 'allow'), ('poetry.lock', 'block'), ('dist/main.js', 'block'),
+    ('ios/Pods/Manifest.lock', 'block'), ('pyproject.toml', 'ask'), ('.venv/x.py', 'block')])
+def test_a_legacy_single_file_repo_needs_no_migration(tmp_path, path, expected):
+    legacy = PLUGIN / 'tests' / 'fixtures' / 'legacy'
+    repo = rules_repo(tmp_path, {f.name: f.read_text() for f in legacy.iterdir()})
+    assert decision(repo, path) == expected
+
+
+def test_every_destructive_commands_file_is_read_and_the_message_names_it(tmp_path):
+    legacy = PLUGIN / 'tests' / 'fixtures' / 'legacy' / 'destructive-commands.txt'
+    repo = rules_repo(tmp_path, {'destructive-commands.txt': legacy.read_text(),
+                                 'destructive-commands.extra.txt': '^\\s*make\\s+flash\\b\n'})
+    old = run_in(repo, 'guard-destructive.py', bash('make db-wipe'))
+    assert old.code == 2
+    assert 'matches a destructive pattern declared for this repo (.claude/rules/destructive-commands.txt).' in old.err
+    new = run_in(repo, 'guard-destructive.py', bash('make flash'))
+    assert new.code == 2
+    assert '(.claude/rules/destructive-commands.extra.txt).' in new.err
+
+
 # ---------------- definition-of-done gate (B1) ----------------
 
 def test_lint_is_a_gate_the_stop_is_blocked_until_it_ran():

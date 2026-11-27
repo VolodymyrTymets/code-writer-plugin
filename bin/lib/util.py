@@ -199,50 +199,84 @@ def matches_any(rel_path: str, globs: list) -> bool:
     return any(not g.startswith('!') and hit(g) for g in globs)
 
 
-def rule_file(root: str, name: str):
-    """Read a rules file from the project first, then fall back to the plugin's own copy."""
-    # The project copy wins. The plugin's rules/ is an inert two-layer library (core/ + stack-python/)
-    # that /setup copies from, so it is only a fallback for a repo that has not been set up yet.
-    plugin = os.environ.get('CLAUDE_PLUGIN_ROOT')
-    candidates = [os.path.join(root, '.claude', 'rules', name)]
-    if plugin:
-        candidates += [os.path.join(plugin, 'rules', 'core', name),
-                       os.path.join(plugin, 'rules', 'stack-python', name)]
-    for f in candidates:
-        if os.path.exists(f):
-            with open(f, encoding='utf-8') as fh:
-                return fh.read()
-    return None
-
-
-def protected_path_lists(root: str) -> dict:
-    """Parse the two fenced glob lists out of rules/protected-paths.md."""
-    md = rule_file(root, 'protected-paths.md')
-    if not md:
-        return {'never': [], 'ask': []}
-    blocks = []
-    for m in re.finditer(r'```([\s\S]*?)```', md):
-        lines = [ln.strip() for ln in m.group(1).split('\n')]
-        blocks.append([ln for ln in lines if ln and not ln.startswith('#')])
-    return {'never': blocks[0] if len(blocks) > 0 else [], 'ask': blocks[1] if len(blocks) > 1 else []}
-
-
-def extra_command_patterns(root: str, name: str) -> list:
-    """Extra patterns a project or a stack pack drops in, one regex per line, `#` for comments:
-    .claude/rules/destructive-commands.txt - ecosystem-specific commands (device copies, publishes)
-    that guard-destructive should also treat as destructive.
+def rule_files(root: str, stem: str, ext: str) -> list:
+    """The project's rule files of one kind: `<stem>.<ext>` and any `<stem>.<label>.<ext>` beside it.
+    Each writer owns its own file, so two of them never append to the same one.
     """
-    f = os.path.join(root, '.claude', 'rules', name)
-    if not os.path.exists(f):
+    folder = os.path.join(root, '.claude', 'rules')
+    name = re.compile(rf'{re.escape(stem)}(\.[\w-]+)?\.{re.escape(ext)}')
+    try:
+        found = sorted(os.listdir(folder))
+    except OSError:
         return []
+    return [os.path.join(folder, f) for f in found if name.fullmatch(f)]
+
+
+def read_text(path: str) -> str:
+    with open(path, encoding='utf-8') as fh:
+        return fh.read()
+
+
+def parse_path_lists(md: str) -> dict:
+    """Sort the fenced glob blocks of one protected-paths file into never-write and ask-first.
+
+    A block belongs to the latest heading, of any level, that starts "Never write" or "Ask first". A block
+    above the first such heading is read by position: the first is never-write, the second ask-first.
+    """
+    lists = {'never': [], 'ask': []}
+    heading = block = None
+    position = 0
+    for line in (ln.strip() for ln in md.split('\n')):
+        if line.startswith('```'):
+            if block is None:
+                block = []
+                continue
+            kind = heading or {0: 'never', 1: 'ask'}.get(position)
+            if kind:
+                lists[kind].extend(block)
+            position += 1
+            block = None
+        elif block is not None:
+            if line and not line.startswith('#'):
+                block.append(line)
+        else:
+            m = re.match(r'#{1,6}\s+(never write|ask first)\b', line, re.I)
+            if m:
+                heading = 'never' if m.group(1).lower().startswith('never') else 'ask'
+    return lists
+
+
+def protected_path_lists(root: str) -> list:
+    """One {'never', 'ask'} pair per protected-paths file, kept apart so a `!` exception stays in its file.
+
+    The project's files win. The plugin's rules/ is an inert library that /setup copies from, so it is only
+    a fallback, all layers together, for a repo that has not been set up yet.
+    """
+    files = rule_files(root, 'protected-paths', 'md')
+    plugin = os.environ.get('CLAUDE_PLUGIN_ROOT')
+    if not files and plugin:
+        library = os.path.join(plugin, 'rules')
+        try:
+            layers = sorted(os.listdir(library))
+        except OSError:
+            layers = []
+        files = [f for f in (os.path.join(library, d, 'protected-paths.md') for d in layers) if os.path.exists(f)]
+    return [parse_path_lists(read_text(f)) for f in files]
+
+
+def extra_command_patterns(root: str, stem: str) -> list:
+    """Extra (file name, regex) pairs a project or a stack pack drops in, one regex per line, `#` for
+    comments: .claude/rules/destructive-commands.txt and destructive-commands.<label>.txt - commands
+    (device copies, publishes) that guard-destructive should also treat as destructive.
+    """
     out = []
-    with open(f, encoding='utf-8') as fh:
-        for line in fh.read().split('\n'):
+    for f in rule_files(root, stem, 'txt'):
+        for line in read_text(f).split('\n'):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
             try:
-                out.append(re.compile(line, re.I))
+                out.append((os.path.basename(f), re.compile(line, re.I)))
             except re.error:
                 pass
     return out
