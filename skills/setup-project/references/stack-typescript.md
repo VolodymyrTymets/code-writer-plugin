@@ -2,8 +2,6 @@
 
 Step 4.5 of `/setup` for a repo whose `Stacks:` line contains `typescript`. Same bootstrap PR, no second command.
 
-**Status:** the rule files and the stack section are written in T3. Until `rules/stack-typescript/ts-core.md` exists in the plugin, skip steps 2 and 3 (still detect, fill the core placeholders and the command map, run step 4 and add the settings entries), keep `typescript` in the `Stacks:` line, and say in the PR that the TypeScript rules are not shipped yet. Never write them by hand into the repo from memory.
-
 ## Step 1 — Detect, then confirm in one line
 
 ```bash
@@ -21,7 +19,7 @@ Copy `ts-tooling.md`, `ts-core.md` and `testing-ts.md` from `rules/stack-typescr
 
 ## Step 3 — Append the stack section and fill the placeholders
 
-Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Rule IDs must not collide with another stack's section in a repo with two stacks (T3 decides the prefixes).
+Append `rules/stack-typescript/CLAUDE.stack-section.md` to `CLAUDE.md` after the command map, **only if it is not already there**. Its rule IDs are `TS1`–`TS3`, so they sit beside another stack's section. In a repo with two stacks the command map follows step 4.5 of `/setup`: labelled rows such as `lint (ts)`.
 
 | Placeholder | Typical value |
 |-------------|---------------|
@@ -44,9 +42,16 @@ Copy each only if it is not already there, and never append to `protected-paths.
 
 Add this stack's install, lint and test commands to `allow` and `ask` in `.claude/settings.json`. Do not touch `permissions.deny`. `grep -r '{{' CLAUDE.md .claude/` returns nothing. Run every command in the map.
 
+## Definition of done (folded into setup-project's own list)
+- [ ] Package manager, runtime version, compiler, linter and test runner detected and confirmed
+- [ ] The three TypeScript rule files installed (merged with any the repo already had)
+- [ ] Stack section appended; `typecheck` row added if the repo type-checks; `CLAUDE.md` still under 200 lines
+- [ ] `protected-paths.typescript.md` and `destructive-commands.typescript.txt` installed, with this repo's real entries
+- [ ] Every command in the map verified to run (or marked `none`)
+
 ## Export manifest
 
-Exactly these files are copied for `typescript`, each once. `protected-paths.md` ships now (step 4 installs it as `protected-paths.typescript.md`) and the rest are created by T3; this list is the contract T3 must keep or update.
+Exactly these files are copied for `typescript`, each once. `.claude/rules/` gets the rule files and the two guard files under their installed names (step 4), `CLAUDE.md` gets the section.
 
 - `rules/stack-typescript/ts-tooling.md`
 - `rules/stack-typescript/ts-core.md`

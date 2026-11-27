@@ -500,6 +500,44 @@ def test_a_repo_that_is_not_set_up_falls_back_to_every_list_in_the_library(tmp_p
     assert decision(tmp_path, path) == expected
 
 
+# ---------------- a command map with two stacks (B1) ----------------
+
+TWO_STACKS = """| Task | Command |
+|------|---------|
+| typecheck | `make types-ts` |
+| lint | `make lint-py` |
+| lint (ts) | `make lint-ts` |
+| unit tests | `make test-py` |
+| unit tests (ts) | `make test-ts` |
+"""
+
+
+def two_stack_stop(tmp_path, session, *commands):
+    (tmp_path / 'CLAUDE.md').write_text(TWO_STACKS)
+    run_in(tmp_path, 'record-activity.py', {'session_id': session, **wrote(str(tmp_path / 'src' / 'a.ts'))})
+    for c in commands:
+        run_in(tmp_path, 'record-activity.py', {'session_id': session, **ran(c)})
+    return run_in(tmp_path, 'verify-dod.py', {'session_id': session})
+
+
+# The known limit, written down: one stack's run satisfies the gate for both until the hooks learn stacks.
+def test_a_labelled_row_satisfies_the_gate_of_its_plain_row(tmp_path):
+    r = two_stack_stop(tmp_path, 's1', 'make types-ts', 'make lint-ts', 'make test-ts')
+    assert 'lint  →' not in r.err and 'make test-py' not in r.err
+
+
+def test_running_neither_labelled_row_blocks_and_quotes_the_plain_one(tmp_path):
+    r = two_stack_stop(tmp_path, 's2', 'make types-ts')
+    assert r.code == 2
+    assert 'make lint-py' in r.err and 'make test-py' in r.err and 'make lint-ts' not in r.err
+
+
+def test_a_typecheck_only_one_stack_has_keeps_its_plain_row_and_is_required(tmp_path):
+    r = two_stack_stop(tmp_path, 's3', 'make lint-ts', 'make test-ts')
+    assert r.code == 2
+    assert 'make types-ts' in r.err
+
+
 # ---------------- TypeScript destructive commands (C4) ----------------
 
 def ts_destructive_repo(tmp_path):

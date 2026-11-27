@@ -13,6 +13,7 @@ import warnings
 from pathlib import Path
 
 from conftest import PLUGIN as ROOT
+from lib.util import _BUCKET_BY_TASK, matches_any
 
 CORE_SKILLS = ['setup-project', 'feature', 'plan-feature', 'analyze-plan', 'develop-feature',
                'write-tests', 'write-docs', 'review-pr', 'fix-bug']
@@ -46,8 +47,11 @@ PLANNED_OK_IN = ['README.md', 'CHANGELOG.md']
 CORE_HOOKS = ['session-context.py', 'guard-git.py', 'guard-destructive.py', 'guard-protected-paths.py',
               'guard-plan-approval.py', 'record-activity.py', 'verify-dod.py', os.path.join('lib', 'util.py')]
 STACK_HOOKS = ['guard-dependency-manager.py', 'format-changed.py']
-# the Python layer must stay complete or /setup cannot install it
-REQUIRED_STACK_RULES = ['python-tooling.md', 'python-core.md', 'testing-python.md', 'CLAUDE.stack-section.md']
+# every stack layer must stay complete or /setup cannot install it
+REQUIRED_STACK_RULES = {
+    'stack-python': ['python-tooling.md', 'python-core.md', 'testing-python.md', 'CLAUDE.stack-section.md'],
+    'stack-typescript': ['ts-tooling.md', 'ts-core.md', 'testing-ts.md', 'CLAUDE.stack-section.md'],
+}
 
 SKIP_DIRS = {'.git', 'node_modules', '__pycache__', '.pytest_cache', '.venv', '.idea', '.serena'}
 
@@ -235,14 +239,60 @@ def test_rules_library_layers_budgets_and_required_stack_rules():
                 warns.append(f'{where}: no frontmatter')
                 continue
             if 'paths:' not in b and (layer, r) != ('core', 'protected-paths.md'):
-                warns.append(f'{where}: no paths: globs - it would load unconditionally, every session')
+                # in a stack layer this is context every session pays for, so it fails rather than warns
+                (fails if layer.startswith('stack-') else warns).append(f'{where}: no paths: globs - it would load unconditionally, every session')
             lines = len(read(d / r).split('\n'))
             if lines > 130:
                 warns.append(f'{where} is {lines} lines (target <=120)')
-    for r in REQUIRED_STACK_RULES:
-        if not (ROOT / 'rules' / 'stack-python' / r).exists():
-            fails.append(f'rules/stack-python/{r} is missing - the Python layer is incomplete')
+    for layer, required in REQUIRED_STACK_RULES.items():
+        for r in required:
+            if not (ROOT / 'rules' / layer / r).exists():
+                fails.append(f'rules/{layer}/{r} is missing - the layer is incomplete')
     report(fails, warns)
+
+
+def rule_globs(path) -> list:
+    return re.findall(r'^\s+- "([^"]+)"$', frontmatter(path) or '', re.M)
+
+
+def test_typescript_rule_paths_reach_typescript_files_and_no_python_file():
+    layer = ROOT / 'rules' / 'stack-typescript'
+    expected = {'ts-tooling.md': ['package.json', 'apps/web/tsconfig.build.json', 'pnpm-lock.yaml'],
+                'ts-core.md': ['a.ts', 'apps/web/src/a.tsx'],
+                'testing-ts.md': ['a.test.ts', 'apps/web/src/a.spec.tsx', 'packages/ui/__tests__/a.ts']}
+    for name, paths in expected.items():
+        globs = rule_globs(layer / name)
+        for p in paths:
+            assert matches_any(p, globs), f'{name} does not load for {p}'
+    for f in sorted(layer.glob('*.md')):
+        if f.name.startswith('CLAUDE.'):
+            continue
+        for p in ('a.py', 'src/pkg/a.py', 'tests/test_a.py'):
+            assert not matches_any(p, rule_globs(f)), f'{f.name} loads for {p}'
+
+
+def test_stack_sections_hold_no_table_rows_and_their_rule_ids_do_not_collide():
+    ids = {}
+    for layer in REQUIRED_STACK_RULES:
+        text = read(ROOT / 'rules' / layer / 'CLAUDE.stack-section.md')
+        assert not re.search(r'^\|', text, re.M), f'{layer}: a table row here would replace a command-map row'
+        ids[layer] = set(re.findall(r'\*\*([A-Z]+\d+)\*\*', text))
+        assert ids[layer], layer
+    ids['core'] = set(re.findall(r'\*\*([A-Z]+\d+)\*\*', read(ROOT / 'rules' / 'core' / 'CLAUDE.template.md')))
+    every = [i for s in ids.values() for i in s]
+    assert len(every) == len(set(every)), ids
+
+
+# A label that changes which gate a row belongs to fails silently: `typescript` contains `types`.
+def test_every_labelled_command_row_setup_names_stays_in_its_plain_rows_bucket():
+    def bucket(task):
+        return next((b for rx, b in _BUCKET_BY_TASK if rx.search(task)), None)
+
+    labelled = re.findall(r'`([a-z][a-z ]*?) \((?:ts|py)\)`', read(ROOT / 'skills' / 'setup-project' / 'SKILL.md'))
+    assert 'lint' in labelled
+    for task in labelled:
+        for label in ('ts', 'py'):
+            assert bucket(f'{task} ({label})') == bucket(task), f'{task} ({label})'
 
 
 def test_every_placeholder_in_the_rules_library_is_documented_in_setup():
