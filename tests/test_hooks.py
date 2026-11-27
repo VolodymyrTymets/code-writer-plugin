@@ -520,7 +520,7 @@ def two_stack_stop(tmp_path, session, *commands):
     return run_in(tmp_path, 'verify-dod.py', {'session_id': session})
 
 
-# The known limit, written down: one stack's run satisfies the gate for both until the hooks learn stacks.
+# Without `Gate paths` lines nothing says which files a row covers, so either row satisfies the gate.
 def test_a_labelled_row_satisfies_the_gate_of_its_plain_row(tmp_path):
     r = two_stack_stop(tmp_path, 's1', 'make types-ts', 'make lint-ts', 'make test-ts')
     assert 'lint  →' not in r.err and 'make test-py' not in r.err
@@ -536,6 +536,76 @@ def test_a_typecheck_only_one_stack_has_keeps_its_plain_row_and_is_required(tmp_
     r = two_stack_stop(tmp_path, 's3', 'make lint-ts', 'make test-ts')
     assert r.code == 2
     assert 'make types-ts' in r.err
+
+
+GATE_PATHS = """
+Gate paths (py): `**/*.py` `**/pyproject.toml`
+Gate paths (ts): `**/*.{ts,tsx}` `**/package.json`
+"""
+PY_CHECKS = ['make lint-py', 'make test-py']
+TS_CHECKS = ['make types-ts', 'make lint-ts', 'make test-ts']
+
+
+def gate(tmp_path, files, commands, command_map_text=TWO_STACKS + GATE_PATHS):
+    """The lines of the stop message that name a command-map row still to run."""
+    (tmp_path / 'CLAUDE.md').write_text(command_map_text, encoding='utf-8')
+    for f in files:
+        run_in(tmp_path, 'record-activity.py', {'session_id': 'g', **wrote(str(tmp_path / f))})
+    for c in commands:
+        run_in(tmp_path, 'record-activity.py', {'session_id': 'g', **(c if isinstance(c, dict) else ran(c))})
+    r = run_in(tmp_path, 'verify-dod.py', {'session_id': 'g'})
+    assert 'Rule B1' in r.err and r.code == 2, 'nothing was executed, so the stop is always blocked here'
+    return [line.strip()[2:] for line in r.err.splitlines() if '  →  ' in line]
+
+
+def test_one_stacks_checks_do_not_cover_a_file_of_the_other(tmp_path):
+    assert gate(tmp_path, ['web/src/a.ts'], PY_CHECKS) == [
+        'typecheck  →  make types-ts', 'lint (ts)  →  make lint-ts', 'unit tests (ts)  →  make test-ts']
+
+
+def test_the_plain_rows_are_not_covered_by_the_labelled_ones(tmp_path):
+    # typecheck exists for one stack only, as a plain row, so both are held to it
+    assert gate(tmp_path, ['app/a.py'], ['make lint-ts', 'make test-ts', 'make types-ts']) == [
+        'lint  →  make lint-py', 'unit tests  →  make test-py']
+
+
+def test_files_of_both_stacks_require_every_row_and_a_shared_plain_row_is_listed_once(tmp_path):
+    assert gate(tmp_path, ['a.py', 'a.tsx'], []) == [
+        'typecheck  →  make types-ts', 'lint  →  make lint-py', 'lint (ts)  →  make lint-ts',
+        'unit tests  →  make test-py', 'unit tests (ts)  →  make test-ts']
+
+
+@pytest.mark.parametrize('file, commands', [('web/package.json', TS_CHECKS), ('a.py', PY_CHECKS + ['make types-ts'])])
+def test_the_untouched_stacks_rows_are_not_demanded(tmp_path, file, commands):
+    assert gate(tmp_path, [file], commands) == []
+
+
+def test_a_failed_run_retires_only_its_own_row(tmp_path):
+    assert gate(tmp_path, ['a.py', 'a.ts'], PY_CHECKS + TS_CHECKS + [crashed('make lint-ts')]) == [
+        'lint (ts)  →  make lint-ts']
+
+
+@pytest.mark.parametrize('commands, missing', [(['make lint-ts', 'make test-py', 'make types-ts'], []),
+                                               (['make types-ts'], ['lint  →  make lint-py', 'tests  →  make test-py'])])
+def test_a_file_no_stack_claims_adds_no_demand(tmp_path, commands, missing):
+    assert gate(tmp_path, ['Makefile'], commands) == missing
+
+
+def test_an_end_to_end_run_does_not_stand_in_for_a_split_tests_row(tmp_path):
+    text = TWO_STACKS + '| e2e | `make e2e-all` |\n' + GATE_PATHS
+    assert gate(tmp_path, ['a.ts'], ['make types-ts', 'make lint-ts', 'make e2e-all'], text) == [
+        'unit tests (ts)  →  make test-ts']
+
+
+def test_a_parenthesised_name_that_is_no_declared_label_stays_an_ordinary_row(tmp_path):
+    text = '| lint | `make lint` |\n| unit tests (fast) | `make test-fast` |\n' + GATE_PATHS
+    assert gate(tmp_path, ['a.ts'], ['make lint'], text) == []
+
+
+def test_gate_paths_lines_are_read_as_written_and_unfilled_ones_are_ignored(tmp_path):
+    (tmp_path / 'CLAUDE.md').write_text(
+        '- Gate paths (TS): `**/*.{ts,tsx}` `**/package.json`\nGate paths (py): `{{PY_PATHS}}`\nGate paths (go):\n')
+    assert util.gate_paths(str(tmp_path)) == {'ts': ['**/*.{ts,tsx}', '**/package.json']}
 
 
 def rows_after(tmp_path, command_map_text, *payloads):

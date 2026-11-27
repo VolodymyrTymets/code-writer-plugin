@@ -443,6 +443,23 @@ def command_map(root: str) -> dict:
     return out
 
 
+_GATE_PATHS = re.compile(r'^[ \t]*(?:[-*][ \t]+)?gate paths \(([\w-]+)\):(.*)$', re.I | re.M)
+
+
+def gate_paths(root: str) -> dict:
+    """The repo's own ``Gate paths (label): `glob` `glob` `` lines in CLAUDE.md, as {label: globs}.
+
+    A command-map row named `<task> (label)` is then required when a file matching its label's globs was edited.
+    No line, no change: the globs are the repo's statement, and this hook guesses none.
+    """
+    out: dict = {}
+    for label, rest in _GATE_PATHS.findall(read_text(os.path.join(root, 'CLAUDE.md'))):
+        globs = [g.strip() for g in re.findall(r'`([^`]+)`', rest) if not g.startswith('{{')]
+        if globs:
+            out.setdefault(label.lower(), []).extend(globs)
+    return out
+
+
 _BUCKET_BY_TASK = [
     (re.compile(r'typecheck|type-check|types'), 'typecheck'),
     (re.compile(r'lint|format|static analysis'), 'lint'),
