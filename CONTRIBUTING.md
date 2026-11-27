@@ -96,9 +96,9 @@ The loading behaviour is Claude Code's, described at <https://code.claude.com/do
 every `.claude/rules/**/*.md` without `paths:`. Lines are raw lines as `wc -l` counts them, comments and frontmatter
 included. `tests/test_structure.py` builds the Python, TypeScript and Both exports from `rules/` and `templates/`,
 counts them with `bin/context-cost.py` and fails any above `CONTEXT_CEILING`, listing each counted file. The `docs/`
-templates the constitution imports count too; `RUNBOOK.md` is only pointed at, so it does not. The ceiling covers what the plugin ships, not what `/setup`
-or the repo adds later (labelled command rows, filled docs). Raise it only on purpose, in a PR that says why.
-`/setup` runs the same script on the repo it set up and reports the result.
+templates the constitution imports count too; `RUNBOOK.md` is only pointed at, so it does not. The ceiling covers
+what the plugin ships, not what `/setup` or the repo adds later (labelled command rows, filled docs). Raise it only on
+purpose, in a PR that says why. `/setup` runs the same script on the repo it set up and reports the result.
 
 Rules of thumb:
 

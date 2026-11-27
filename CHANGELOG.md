@@ -18,7 +18,7 @@ after the ask-first list now ask for confirmation. No file needs to change for t
      - ".claude/rules/protected-paths*.md"
    ```
 
-2. In `CLAUDE.md`, replace `- How to run things: @docs/RUNBOOK.md` with
+2. In `CLAUDE.md`, replace the line that imports `@docs/RUNBOOK.md` with
    ``- How to run things and what goes wrong: `docs/RUNBOOK.md` — read it when a command or the environment fails``.
 
 ### Deleted
