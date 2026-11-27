@@ -6,9 +6,11 @@ The plugin has two layers that live in directories, not in separate repos:
 Skills are deliberately FLAT (nesting inside a plugin's skills/ is not a documented Claude Code
 feature), so the layer of a skill is known from the lists below rather than from its path.
 """
+import importlib.util
 import json
 import os
 import re
+import shutil
 import warnings
 from pathlib import Path
 
@@ -51,6 +53,8 @@ CORE_HOOKS = ['session-context.py', 'guard-git.py', 'guard-destructive.py', 'gua
 # every stack hook is tagged with the stacks it serves
 STACK_HOOKS = {'guard-dependency-manager.py': ['python', 'typescript'], 'format-changed.py': ['python', 'typescript']}
 # every stack layer must stay complete or /setup cannot install it
+# scripts in bin/ that are not hooks: as stack-neutral as the core hooks, never wired in hooks.json
+CORE_SCRIPTS = ['context-cost.py']
 REQUIRED_STACK_RULES = {
     'stack-python': ['python-tooling.md', 'python-core.md', 'testing-python.md', 'CLAUDE.stack-section.md'],
     'stack-typescript': ['ts-tooling.md', 'ts-core.md', 'testing-ts.md', 'CLAUDE.stack-section.md'],
@@ -421,6 +425,97 @@ def test_export_sets_for_python_typescript_and_both_do_not_overlap():
     report(fails)
 
 
+# ---------------- context budget ----------------
+
+# Lines every session pays for in a freshly set-up repo: CLAUDE.md, the docs it imports and the rule files without
+# `paths:`. A line is what `wc -l` counts. Raising this is a decision to make in review, not a way to get green.
+CONTEXT_CEILING = 340
+
+
+def context_counter():
+    spec = importlib.util.spec_from_file_location('context_cost', ROOT / 'bin' / 'context-cost.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.always_loaded
+
+
+def build_export(plugin, stacks, repo) -> dict:
+    """What /setup installs for `stacks`, as far as loading goes. Returns installed path -> source path(s).
+
+    The rule folders are read whole, so a new rule file is counted without being registered anywhere.
+    """
+    sources = {}
+
+    def install(source, name, text=None):
+        target = repo / name
+        assert name not in sources, f'{source} and {sources[name]} would both install as {name}'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(read(plugin / source) if text is None else text, encoding='utf-8')
+        sources[name] = source
+
+    parts = ['rules/core/CLAUDE.template.md'] + [f'rules/stack-{s}/CLAUDE.stack-section.md' for s in stacks]
+    install(' + '.join(parts), 'CLAUDE.md', ''.join(read(plugin / p) for p in parts))
+    for layer in ['core'] + [f'stack-{s}' for s in stacks]:
+        for rule in sorted((plugin / 'rules' / layer).glob('*.md')):
+            if rule.name.startswith('CLAUDE.'):
+                continue
+            stack_list = layer != 'core' and rule.name == 'protected-paths.md'
+            name = f'protected-paths.{layer[len("stack-"):]}.md' if stack_list else rule.name
+            install(f'rules/{layer}/{rule.name}', f'.claude/rules/{name}')
+    for doc in sorted((plugin / 'templates').glob('*.md')):
+        if doc.name == 'PULL_REQUEST_TEMPLATE.md':
+            continue    # /setup puts it under .github/, not docs/
+        install(f'templates/{doc.name}', f'docs/{doc.name}')
+    return sources
+
+
+def context_budget(plugin, stacks, repo):
+    """(total, counted source paths with their lines) for one export."""
+    sources = build_export(plugin, stacks, repo)
+    counted = {}
+    for path, n in context_counter()(repo):
+        name = os.path.relpath(path.resolve(), repo.resolve()).replace(os.sep, '/')
+        assert name in sources, f'{path} is imported but is not part of the export'
+        counted[sources[name]] = n
+    return sum(counted.values()), counted
+
+
+def budget_failure(stacks, total, counted):
+    if total <= CONTEXT_CEILING:
+        return None
+    files = '\n'.join(f'  {n:4}  {source}' for source, n in sorted(counted.items(), key=lambda c: (-c[1], c[0])))
+    return (f'{" + ".join(stacks)} export: {total} lines load in every session, ceiling {CONTEXT_CEILING}.\n{files}\n'
+            'Give the new rule file `paths:`, or cut lines (CONTRIBUTING.md, "Context budget").')
+
+
+EXPORTS = [[s] for s in known_stacks()] + [known_stacks()]
+
+
+@pytest.mark.parametrize('stacks', EXPORTS, ids='+'.join)
+def test_every_export_stays_under_the_context_ceiling(tmp_path, stacks):
+    total, counted = context_budget(ROOT, stacks, tmp_path)
+    # a counter that silently counts nothing would pass any ceiling
+    assert {'rules/core/protected-paths.md', 'templates/ARCHITECTURE.md', 'templates/RUNBOOK.md'} <= set(counted)
+    failure = budget_failure(stacks, total, counted)
+    assert not failure, failure
+
+
+@pytest.mark.parametrize('layer', ['core', 'stack-typescript'])
+def test_breaking_the_context_ceiling_names_the_rule_file(tmp_path, layer):
+    plugin = tmp_path / 'plugin'
+    for folder in ('rules', 'templates'):
+        shutil.copytree(ROOT / folder, plugin / folder)
+    (plugin / 'rules' / layer / 'too-big.md').write_text('---\ndescription: d\n---\n' + 'rule\n' * CONTEXT_CEILING)
+    total, counted = context_budget(plugin, ['typescript'], tmp_path / 'repo')
+    assert f'rules/{layer}/too-big.md' in budget_failure(['typescript'], total, counted)
+
+
+def test_setup_reports_the_context_cost_with_a_script_that_exists():
+    command = 'python3 "${CLAUDE_PLUGIN_ROOT}/bin/context-cost.py" .'
+    assert command in read(ROOT / 'skills' / 'setup-project' / 'SKILL.md')
+    assert all((ROOT / 'bin' / s).exists() for s in CORE_SCRIPTS)
+
+
 # ---------------- hooks wiring ----------------
 
 def test_hooks_json_is_wired_to_scripts_that_exist():
@@ -682,7 +777,7 @@ def scan(path) -> list:
 
 def test_core_hooks_name_no_tooling():
     fails = [f"{msg} - core hooks must read the repo's command map, never name tooling"
-             for h in CORE_HOOKS for msg in scan(ROOT / 'bin' / h)]
+             for h in CORE_HOOKS + CORE_SCRIPTS for msg in scan(ROOT / 'bin' / h)]
     report(fails)
 
 
