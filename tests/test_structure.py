@@ -245,7 +245,7 @@ def test_rules_library_layers_budgets_and_required_stack_rules():
             if not b:
                 warns.append(f'{where}: no frontmatter')
                 continue
-            if 'paths:' not in b and (layer, r) != ('core', 'protected-paths.md'):
+            if 'paths:' not in b:
                 # in a stack layer this is context every session pays for, so it fails rather than warns
                 (fails if layer.startswith('stack-') else warns).append(f'{where}: no paths: globs - it would load unconditionally, every session')
             lines = len(read(d / r).split('\n'))
@@ -495,7 +495,10 @@ EXPORTS = [[s] for s in known_stacks()] + [known_stacks()]
 def test_every_export_stays_under_the_context_ceiling(tmp_path, stacks):
     total, counted = context_budget(ROOT, stacks, tmp_path)
     # a counter that silently counts nothing would pass any ceiling
-    assert {'rules/core/protected-paths.md', 'templates/ARCHITECTURE.md', 'templates/RUNBOOK.md'} <= set(counted)
+    assert {'templates/ARCHITECTURE.md', 'templates/RUNBOOK.md'} <= set(counted)
+    # the hook reads the list itself, so no session has to carry it
+    assert 'rules/core/protected-paths.md' in build_export(ROOT, stacks, tmp_path).values()
+    assert 'rules/core/protected-paths.md' not in counted
     failure = budget_failure(stacks, total, counted)
     assert not failure, failure
 
