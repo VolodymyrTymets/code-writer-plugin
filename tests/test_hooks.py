@@ -987,6 +987,80 @@ def test_a_question_never_hides_a_later_block(tmp_path):
     assert both.code == 0 and 'pip install x' in both.out and 'pnpm add y' in both.out
 
 
+# ---------------- stack layer: TypeScript formatter ----------------
+
+def stub_formatter(repo, tool, folder='.'):
+    """A fake local install that records the arguments it was given."""
+    b = repo / folder / 'node_modules' / '.bin'
+    b.mkdir(parents=True, exist_ok=True)
+    (b / tool).write_text(f'#!/bin/sh\necho "{tool} $*" >> "{repo}/calls.log"\n')
+    (b / tool).chmod(0o755)
+
+
+def formatted_with(repo, file):
+    (repo / file).parent.mkdir(parents=True, exist_ok=True)
+    (repo / file).write_text('const a = 1\n')
+    r = run_in(repo, 'format-changed.py', {'tool_name': 'Write', 'tool_input': {'file_path': file}})
+    assert (r.code, r.out) == (0, ''), r.err
+    log = repo / 'calls.log'
+    calls = log.read_text() if log.exists() else ''
+    log.unlink(missing_ok=True)
+    return calls
+
+
+def formatter_repo(repo, files):
+    for name, text in files.items():
+        (repo / name).parent.mkdir(parents=True, exist_ok=True)
+        (repo / name).write_text(text)
+    stub_formatter(repo, 'prettier')
+    stub_formatter(repo, 'biome')
+    return repo
+
+
+BIOME_ON = '{"formatter": {"indentStyle": "space"}}'
+BIOME_COMMENTED = '// c\n{\n  "$schema": "https://x/y.json", /* c */\n  "formatter": {"enabled": true,},\n}\n'
+
+
+# WHY: the stubs are shell scripts; on Windows the hook looks for the .cmd shims instead.
+@pytest.mark.skipif(os.name == 'nt', reason='POSIX stub executables')
+@pytest.mark.parametrize('files, expected', [
+    ({'.prettierrc': '{}'}, 'prettier --write'),
+    ({'prettier.config.mjs': ''}, 'prettier --write'),
+    ({'package.json': '{"prettier": {"semi": false}}'}, 'prettier --write'),
+    ({'biome.json': BIOME_ON}, 'biome format --write'),
+    ({'biome.jsonc': BIOME_COMMENTED}, 'biome format --write'),
+    ({'package.json': '{"devDependencies": {"prettier": "^3"}}'}, None),
+    ({'biome.json': '{"linter": {"enabled": true}}'}, None),
+    ({'biome.json': '{"formatter": {"enabled": false}}'}, None),
+    ({'.prettierrc': '{}', 'biome.json': BIOME_ON}, None),
+    ({}, None),
+])
+def test_typescript_is_formatted_only_with_the_declared_formatter(tmp_path, files, expected):
+    repo = formatter_repo(tmp_path, files)
+    for file in ('src/a.ts', 'src/a.tsx', 'a.mts', 'a.cts'):
+        calls = formatted_with(repo, file)
+        if expected:
+            assert calls.startswith(expected) and calls.strip().endswith(file), calls
+        else:
+            assert calls == '', calls
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='POSIX stub executables')
+def test_the_nearest_declaration_in_a_monorepo_decides(tmp_path):
+    repo = formatter_repo(tmp_path, {'.prettierrc': '{}', 'apps/web/biome.json': BIOME_ON})
+    assert formatted_with(repo, 'apps/web/src/a.ts').startswith('biome')
+    assert formatted_with(repo, 'apps/api/a.ts').startswith('prettier')
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='POSIX stub executables')
+def test_other_files_and_a_missing_binary_run_no_node_formatter(tmp_path):
+    repo = formatter_repo(tmp_path, {'.prettierrc': '{}', 'ruff.toml': ''})
+    for file in ('a.py', 'a.js', 'README.md', 'node_modules/x/a.ts', 'dist/a.ts'):
+        assert formatted_with(repo, file) == '', file
+    shutil.rmtree(repo / 'node_modules')
+    assert formatted_with(repo, 'a.ts') == ''
+
+
 # ---------------- plan approval gate (both directions) ----------------
 
 def test_an_unapproved_plan_blocks_writes_to_code():
