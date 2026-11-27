@@ -463,6 +463,8 @@ def build_export(plugin, stacks, repo) -> dict:
             name = f'protected-paths.{layer[len("stack-"):]}.md' if stack_list else rule.name
             install(f'rules/{layer}/{rule.name}', f'.claude/rules/{name}')
     for doc in sorted((plugin / 'templates').glob('*.md')):
+        if doc.name == 'PULL_REQUEST_TEMPLATE.md':
+            continue    # /setup puts it under .github/, not docs/
         install(f'templates/{doc.name}', f'docs/{doc.name}')
     return sources
 
@@ -470,7 +472,11 @@ def build_export(plugin, stacks, repo) -> dict:
 def context_budget(plugin, stacks, repo):
     """(total, counted source paths with their lines) for one export."""
     sources = build_export(plugin, stacks, repo)
-    counted = {sources[p.relative_to(repo).as_posix()]: n for p, n in context_counter()(repo)}
+    counted = {}
+    for path, n in context_counter()(repo):
+        name = os.path.relpath(path.resolve(), repo.resolve()).replace(os.sep, '/')
+        assert name in sources, f'{path} is imported but is not part of the export'
+        counted[sources[name]] = n
     return sum(counted.values()), counted
 
 

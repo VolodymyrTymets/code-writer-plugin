@@ -5,13 +5,16 @@ Always loaded: CLAUDE.md and .claude/CLAUDE.md, what they import with @path (fou
 .claude/rules/**/*.md without a `paths:` key in its frontmatter. Lines are raw lines, as `wc -l` counts them,
 comments and frontmatter included. Report only: it never fails a repository.
 """
+import os
 import re
 import sys
 from pathlib import Path
 
 MAX_HOPS = 4
-FENCED = re.compile(r'^[ \t]*(```|~~~).*?(?:^[ \t]*\1[^\n]*$|\Z)', re.M | re.S)
-CODE_SPAN = re.compile(r'(`+)(?:(?!\1).)+?\1', re.S)
+# a fence closes on a run of its own character at least as long as the opening one
+FENCED = re.compile(r'^[ \t]*(`{3,}|~{3,}).*?(?:^[ \t]*\1[`~]*[ \t]*$|\Z)', re.M | re.S)
+# within one line: a stray backtick must not hide a later import (over-counting is the safer mistake)
+CODE_SPAN = re.compile(r'(`+)(?:(?!\1)[^\n])+?\1')
 # only at a line start or after whitespace, so an address such as name@host is not an import
 IMPORT = re.compile(r'(?<!\S)@(\S+)')
 
@@ -25,8 +28,12 @@ def imports(path: Path) -> list:
     out = []
     for name in IMPORT.findall(CODE_SPAN.sub(' ', FENCED.sub(' ', read(path)))):
         for candidate in (name, name.rstrip('.,;:!?)')):    # "see @notes.md." ends a sentence
-            target = path.parent / Path(candidate).expanduser()
-            if target.is_file():
+            try:
+                target = path.parent / Path(candidate).expanduser()
+                found = target.is_file()
+            except (OSError, RuntimeError, ValueError):    # unknown ~user, over-long name: not an import
+                continue
+            if found:
                 out.append(target)
                 break
     return out
@@ -35,6 +42,19 @@ def imports(path: Path) -> list:
 def is_path_scoped(path: Path) -> bool:
     m = re.match(r'---\n(.*?)\n---\n', read(path), re.S)
     return bool(m and re.search(r'^paths:', m.group(1), re.M))
+
+
+def rule_files(folder: Path) -> list:
+    """Every .md under `folder`, following linked folders, each real folder once."""
+    out, seen = [], set()
+    for current, dirs, files in os.walk(folder, followlinks=True):
+        real = os.path.realpath(current)
+        if real in seen:
+            dirs[:] = []
+            continue
+        seen.add(real)
+        out.extend(Path(current) / f for f in files if f.endswith('.md'))
+    return sorted(out)
 
 
 def always_loaded(root) -> list:
@@ -52,7 +72,7 @@ def always_loaded(root) -> list:
     level = [p for p in (root / 'CLAUDE.md', root / '.claude' / 'CLAUDE.md') if p.is_file() and add(p)]
     for _ in range(MAX_HOPS):
         level = [t for p in level for t in imports(p) if add(t)]
-    for rule in sorted((root / '.claude' / 'rules').rglob('*.md')):
+    for rule in rule_files(root / '.claude' / 'rules'):
         if rule.is_file() and not is_path_scoped(rule):
             add(rule)
     return list(found.values())

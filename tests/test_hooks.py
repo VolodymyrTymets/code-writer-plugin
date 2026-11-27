@@ -1258,9 +1258,9 @@ def test_the_gate_ignores_tools_that_do_not_write_files():
 
 # ---------------- context cost report (not a hook) ----------------
 
-def context_cost(repo):
+def context_cost(repo, env=None):
     r = subprocess.run([sys.executable, str(PLUGIN / 'bin' / 'context-cost.py'), str(repo)],
-                       capture_output=True, text=True, encoding='utf-8')
+                       capture_output=True, text=True, encoding='utf-8', env={**os.environ, **(env or {})})
     assert r.returncode == 0, r.stderr
     rows = {name: int(n) for n, name in re.findall(r'^ *(\d+)  (.+)$', r.stdout, re.M)}
     return rows.pop('total'), rows
@@ -1303,6 +1303,38 @@ def test_context_cost_counts_a_file_once_and_stops_after_four_hops(tmp_path):
     total, rows = context_cost(tmp_path)
     assert sorted(rows) == ['CLAUDE.md', 'h1.md', 'h2.md', 'h3.md', 'h4.md']
     assert total == 5
+
+
+@pytest.mark.parametrize('token', ['@~no-such-user-here/x.md', '@' + 'a' * 300])
+def test_context_cost_survives_a_token_that_cannot_be_a_file(tmp_path, token):
+    put(tmp_path, 'CLAUDE.md', f'see {token}\n')
+    assert context_cost(tmp_path) == (1, {'CLAUDE.md': 1})
+
+
+@pytest.mark.parametrize('before', ['odd ` backtick\n- ', '````\n```\n````\n', '~~~~\n~~~\n~~~~~\n'],
+                         ids=['stray-backtick', 'nested-fence', 'longer-closing-fence'])
+def test_context_cost_does_not_lose_an_import_after_unusual_markdown(tmp_path, before):
+    put(tmp_path, 'CLAUDE.md', before + '@a.md\nthen `code`\n')
+    put(tmp_path, 'a.md', 'x\n')
+    assert 'a.md' in context_cost(tmp_path)[1]
+
+
+def test_context_cost_follows_home_and_absolute_imports(tmp_path):
+    repo, home = tmp_path / 'repo', tmp_path / 'home'
+    put(home, 'mine.md', 'x\n')
+    put(tmp_path, 'shared.md', 'x\nx\n')
+    put(repo, 'CLAUDE.md', f'@~/mine.md\n@{tmp_path / "shared.md"}\n')
+    total, rows = context_cost(repo, env={'HOME': str(home)})
+    assert total == 5 and sorted(rows.values()) == [1, 2, 2]
+
+
+def test_context_cost_follows_a_symlinked_rules_folder_once(tmp_path):
+    repo = tmp_path / 'repo'
+    put(tmp_path, 'shared/team.md', 'rule\n')
+    (repo / '.claude' / 'rules').mkdir(parents=True)
+    (repo / '.claude' / 'rules' / 'shared').symlink_to(tmp_path / 'shared', target_is_directory=True)
+    (tmp_path / 'shared' / 'loop').symlink_to(tmp_path / 'shared', target_is_directory=True)
+    assert context_cost(repo)[0] == 1
 
 
 def test_context_cost_of_a_repo_with_no_config_is_zero(tmp_path):
