@@ -453,17 +453,20 @@ _BUCKET_BY_TASK = [
 ]
 
 
-def verification_needles(root: str) -> list:
-    """Verification needles derived from the command map: [{ bucket, needle }]."""
+def command_rows(root: str) -> list:
+    """Every command-map row that is a kind of check: [{ task, bucket, needle }]."""
     out = []
     for task, cmd in command_map(root).items():
         bucket = next((b for rx, b in _BUCKET_BY_TASK if rx.search(task)), None)
-        if not bucket:
-            continue
-        needle = re.sub(r'\s+', ' ', re.sub(r'\{\{[^}]*\}\}', '', cmd)).strip()
-        if len(needle) >= 4:
-            out.append({'bucket': bucket, 'needle': needle.lower()})
+        needle = re.sub(r'\s+', ' ', re.sub(r'\{\{[^}]*\}\}', '', cmd)).strip().lower()
+        if bucket and needle:
+            out.append({'task': task, 'bucket': bucket, 'needle': needle})
     return out
+
+
+def verification_needles(root: str) -> list:
+    """The rows long enough to stand for a whole kind of check: [{ task, bucket, needle }]."""
+    return [r for r in command_rows(root) if len(r['needle']) >= 4]
 
 
 # ---------- session state (record-activity -> verify-dod) ----------
@@ -478,7 +481,7 @@ def state_file(root: str, session_id) -> str:
 
 
 def _empty_state() -> dict:
-    return {'codeEdits': [], 'docEdits': [], 'verified': {}, 'stopBlocks': 0}
+    return {'codeEdits': [], 'docEdits': [], 'verified': {}, 'rows': {}, 'stopBlocks': 0}
 
 
 def load_state(root: str, session_id) -> dict:

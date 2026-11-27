@@ -538,6 +538,49 @@ def test_a_typecheck_only_one_stack_has_keeps_its_plain_row_and_is_required(tmp_
     assert 'make types-ts' in r.err
 
 
+def rows_after(tmp_path, command_map_text, *payloads):
+    (tmp_path / 'CLAUDE.md').write_text(command_map_text)
+    for payload in payloads:
+        run_in(tmp_path, 'record-activity.py', {'session_id': 'rows', **payload})
+    state = tmp_path / '.claude' / '.state' / 'session-rows.json'
+    return sorted(json.loads(state.read_text(encoding='utf-8'))['rows'])
+
+
+@pytest.mark.parametrize('command, rows', [
+    ('make lint-py', ['lint']), ('make lint-ts', ['lint (ts)']), ('cd web && make test-ts', ['unit tests (ts)']),
+    ('make lint-py && make lint-ts', ['lint', 'lint (ts)']),
+    ('make lint-ts | tail -5', []), ('make lint-ts || true', []), ('grep "make lint-ts" CLAUDE.md', []),
+    ('ruff check src', [])])
+def test_the_command_map_row_that_ran_is_recorded(tmp_path, command, rows):
+    assert rows_after(tmp_path, TWO_STACKS, ran(command)) == rows
+
+
+def test_a_failed_row_is_retired_and_the_other_rows_stay(tmp_path):
+    assert rows_after(tmp_path, TWO_STACKS, ran('make lint-py'), ran('make lint-ts'),
+                      crashed('make lint-ts')) == ['lint']
+
+
+def test_a_failure_no_row_claims_retires_every_row_of_its_kind(tmp_path):
+    assert rows_after(tmp_path, TWO_STACKS, ran('make lint-py'), ran('make lint-ts'), ran('make test-py'),
+                      crashed('npm run lint')) == ['unit tests']
+
+
+def test_only_the_most_specific_matching_row_is_recorded(tmp_path):
+    text = '| lint | `make lint` |\n| lint (ts) | `make lint -C web` |\n'
+    assert rows_after(tmp_path, text, ran('make lint -C web')) == ['lint (ts)']
+
+
+def test_a_mapped_command_shorter_than_four_characters_still_records_its_row(tmp_path):
+    assert rows_after(tmp_path, '| typecheck (ts) | `tsc` |\n', ran('tsc')) == ['typecheck (ts)']
+
+
+def test_a_state_file_written_before_rows_existed_still_loads(tmp_path):
+    state = tmp_path / '.claude' / '.state'
+    state.mkdir(parents=True)
+    (state / 'session-rows.json').write_text('{"codeEdits": ["a.ts"], "verified": {}}', encoding='utf-8')
+    assert rows_after(tmp_path, TWO_STACKS, ran('make lint-py')) == ['lint']
+
+
 # ---------------- TypeScript destructive commands (C4) ----------------
 
 def ts_destructive_repo(tmp_path):
